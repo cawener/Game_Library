@@ -358,7 +358,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <kbd>I</kbd><span>Tuotantotilastot</span>
       <kbd>L</kbd><span>Kaavakirjasto: tallenna kopioituja kaavoja nimellä ja käytä niitä uudelleen</span>
       <kbd>O</kbd><span>Viestiloki</span>
-      <kbd>T</kbd><span>Tilanäkymä: värjää rakennukset tilan mukaan. Toinen painallus näyttää höyryverkot paineen mukaan, kolmas sulkee</span>
+      <kbd>T</kbd><span>Tilanäkymä: värjää rakennukset tilan mukaan. Toinen painallus näyttää höyryverkot paineen mukaan ja kolmas (Normaali ja Hullu!) malmivarat</span>
       <kbd>U</kbd><span>Päivitystyökalu: vedä alue, niin kuljettimet vaihtuvat pikakuljettimiksi ja koneet päivittyvät seuraavalle tasolle</span>
       <kbd>Ctrl / Shift + klikkaus</kbd><span>Kopioi rakennuksen asetukset (resepti, suodatin, tila) / liitä ne samanlaiseen rakennukseen</span>
       <kbd>K</kbd><span>Tuotekirja ja tuotantolaskuri: mistä jokaisen tuotteen saa, mihin sitä käytetään ja montako konetta haluttu tuotanto vaatii. Saman tiedon näkee myös osoittamalla tuotetta missä tahansa</span>
@@ -477,7 +477,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.19';
+const VERSION = '0.20';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -529,6 +529,24 @@ function depleteTile(i) {
   for (let k = 0; k < 6; k++) particles.push({ x: x + .5, y: y + .5, vx: (Math.random() - .5) * 1.2, vy: -Math.random(), life: 0, max: .8, r: .1, col: 'rgba(150,130,100,' });
   if (grid[i] && performance.now() - (depleteTile.t || 0) > 3000) { toast(`${was === 6 ? 'Öljylähde' : 'Esiintymä'} ehtyi: rakenna ${was === 6 ? 'pumppu' : 'pora'} uuteen paikkaan`); depleteTile.t = performance.now(); }
 }
+// A drill mines its own tile first, then tiles of the same ore within its reach
+function drillTiles(b) {
+  const R = BUILD[b.t].reach || 0, out = [];
+  for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) { const x = b.x + dx, y = b.y + dy; if (inB(x, y)) out.push([Math.max(Math.abs(dx), Math.abs(dy)), idx(x, y)]); }
+  return out.sort((a, c) => a[0] - c[0]).map(e => e[1]);
+}
+function drillTile(b) {
+  const own = idx(b.x, b.y);
+  if (ore[own] && ore[own] !== 6) { b.oreT = ore[own]; return own; }
+  if (!b.oreT) return -1;
+  for (const i of (b._dt || (b._dt = drillTiles(b)))) if (ore[i] === b.oreT && !(grid[i] && (grid[i].t === 'drill' || grid[i].t === 'drill2') && grid[i] !== b)) return i;
+  return -1;
+}
+function drillLeft(b) {
+  const t = b.oreT || ore[idx(b.x, b.y)]; if (!t) return 0; let sum = 0;
+  for (const i of drillTiles(b)) if (ore[i] === t) { const l = oreLeft(i); if (l === Infinity) return Infinity; sum += l; }
+  return sum;
+}
 const fmtLeft = i => { const l = oreLeft(i); return l === Infinity ? 'ehtymätön' : fmt(l); };
 const ORE_ITEM = [null, 'rautamalmi', 'kuparimalmi', 'hiili', 'kivi', 'sinkkimalmi', null];
 
@@ -559,8 +577,8 @@ const BUILD = {
                desc: 'Kuljettaa tavaroita nuolen suuntaan. Vedä hiirellä rakentaaksesi pitkän rivin.' },
   pipe:      { n: 'Höyryputki',    key: '2', lvl: 0, cost: { putki: 1 }, steamy: true,
                desc: 'Johtaa höyryä kattiloista koneisiin. Vierekkäiset koneet ja kattilat johtavat höyryä myös suoraan toisilleen.' },
-  drill:     { n: 'Höyrypora',     key: '3', lvl: 0, cost: { rautalevy: 8, tiili: 4 }, use: 15, rate: 0.5,
-               desc: 'Asetetaan malmin tai hiilen päälle. Louhii 30/min ja syöttää eteenpäin. Kuluttaa 15 höyryä.' },
+  drill:     { n: 'Höyrypora',     key: '3', lvl: 0, cost: { rautalevy: 8, tiili: 4 }, use: 15, rate: 0.5, reach: 1,
+               desc: 'Asetetaan malmin tai hiilen päälle. Louhii 30/min ja syöttää eteenpäin. Kun oma ruutu ehtyy, jatkaa samaa malmia ympäröivältä 3 × 3 -alueelta. Kuluttaa 15 höyryä.' },
   smelter:   { n: 'Sulatto',       key: '4', lvl: 0, cost: { tiili: 10, rautalevy: 4 }, use: 20,
                desc: 'Sulattaa malmin levyiksi ja harkoiksi sekä kiven tiiliksi (2:1). Myöhemmin rautalevyistä terästä (3:1). Kuluttaa 20 höyryä.' },
   boiler:    { n: 'Kattila',       key: '5', lvl: 0, cost: { tiili: 8, rautalevy: 6, kuparilevy: 4 }, gen: 100, burnT: 4, cap: 20,
@@ -573,8 +591,8 @@ const BUILD = {
                desc: 'Valmistaa osia valitun reseptin mukaan. Kuluttaa 25 höyryä.' },
   fastbelt:  { n: 'Pikakuljetin',  key: '9', lvl: 2, cost: { rautalevy: 1, hammasratas: 1 }, speed: 3.2,
                desc: 'Kaksi kertaa nopeampi kuljetin.' },
-  drill2:    { n: 'Paineporakone', key: '0', lvl: 3, cost: { teras: 6, hammasratas: 6, venttiili: 2 }, use: 35, rate: 1.2,
-               desc: 'Louhii 72/min. Kuluttaa 35 höyryä.' },
+  drill2:    { n: 'Paineporakone', key: '0', lvl: 3, cost: { teras: 6, hammasratas: 6, venttiili: 2 }, use: 35, rate: 1.2, reach: 2,
+               desc: 'Louhii 72/min. Kun oma ruutu ehtyy, jatkaa samaa malmia ympäröivältä 5 × 5 -alueelta. Kuluttaa 35 höyryä.' },
   rail:      { n: 'Rautatie',      key: 'T', lvl: 3, cost: { teras: 1, puu: 1 },
                desc: 'Raide junille. Vedä hiirellä. Raiteet yhdistyvät viereisiin raiteisiin ja asemiin.' },
   station:   { n: 'Asema',         key: 'Y', lvl: 3, cost: { teras: 8, rautalevy: 6, lankku: 10 },
@@ -1271,10 +1289,11 @@ const UPD = {
   },
   drill(b, dt) {
     if (b.out) { if (pushFront(b, b.out)) b.out = null; else { b.st = 'blocked'; b.act = 0; return; } }
+    const ti = drillTile(b);
+    if (ti < 0) { b.st = 'depleted'; b.act = 0; return; }
     const s = steam(b); setRun(b, s);
     b.prog += dt * b.act * BUILD[b.t].rate * UP_SPEED[upl(b)];
-    if (!ORE_ITEM[ore[idx(b.x, b.y)]]) { b.st = 'depleted'; b.act = 0; return; }
-    if (b.prog >= 1) { b.prog -= 1; const ti = idx(b.x, b.y), o = ORE_ITEM[ore[ti]]; stat(o, 1, 'p'); mineTile(ti, 1); if (!pushFront(b, o)) b.out = o; }
+    if (b.prog >= 1) { b.prog -= 1; const o = ORE_ITEM[ore[ti]]; stat(o, 1, 'p'); mineTile(ti, 1); if (!pushFront(b, o)) b.out = o; }
   },
   smelter(b, dt) {
     if (b.outN > 0 && pushFront(b, b.outT)) b.outN--;
@@ -1536,6 +1555,8 @@ const ACH = [
   { id: 'patents', n: 'Patenttien mestari', d: 'Hanki kaikki viisi patenttia.', ok: () => S.level >= 5 },
   { id: 'aurora', n: 'Aurora', d: 'Nosta Aurora telakalta.', ok: () => (S.ships || 0) >= 1 },
   { id: 'fleet', n: 'Ilmalaivasto', d: 'Rakenna kolme ilmalaivaa.', ok: () => (S.ships || 0) >= 3 },
+  { id: 'normalWin', n: 'Laakson insinööri', d: 'Nosta Aurora Normaalilla vaikeustasolla.', ok: () => (S.ships || 0) >= 1 && S.diff === 'normal' },
+  { id: 'hardWin', n: 'Hullu kaivosmies', d: 'Nosta Aurora Hullu!-vaikeustasolla.', ok: () => (S.ships || 0) >= 1 && S.diff === 'hard' },
 ];
 function checkAch() {
   S.ach = S.ach || {};
@@ -2574,8 +2595,20 @@ function render(fdt) {
     }
   }
 
+  // ore reserves overlay
+  if (overlay === 3) {
+    g.fillStyle = 'rgba(10,8,6,.5)'; g.fillRect(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+    const showN = z >= 34; if (showN) { g.font = '600 .22px "Alegreya Sans", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; }
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const i = idx(x, y); if (!ore[i]) continue;
+      const tot = oreTotal(i); if (tot === Infinity) continue;
+      const f = Math.max(0, Math.min(1, oreLeft(i) / tot));
+      g.fillStyle = `hsla(${Math.round(f * 120)},70%,48%,.55)`; g.fillRect(x + .06, y + .06, .88, .88);
+      if (showN) { g.fillStyle = '#fff'; g.fillText(fmt(oreLeft(i)), x + .5, y + .5); }
+    }
+  }
   // status / steam overlay
-  if (overlay) {
+  if (overlay === 1 || overlay === 2) {
     g.fillStyle = 'rgba(10,8,6,.55)'; g.fillRect(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
     const GOOD = { work: 1, burn: 1 }, BADS = { nosteam: 1, nonet: 1, nofuel: 1, nopath: 1, nooil: 1 };
     for (const b of blist) {
@@ -2674,6 +2707,7 @@ function render(fdt) {
         if (tool === 'tunnel') { g.globalAlpha = .6; tunnelArch(gb); g.globalAlpha = 1; }
         if (err && !underOk) { g.fillStyle = 'rgba(224,98,60,.35)'; g.fillRect(hover.x, hover.y, gb.w || 1, gb.h || 1); }
       } else { g.save(); g.translate(hover.x + .5, hover.y + .5); g.globalAlpha = .8; arrow(rot); g.restore(); }
+      if ((gb.t === 'drill' || gb.t === 'drill2') && S.diff && S.diff !== 'sandbox') { const R = BUILD[gb.t].reach; g.strokeStyle = 'rgba(234,208,138,.55)'; g.lineWidth = .05; g.setLineDash([.15, .1]); g.strokeRect(hover.x - R + .05, hover.y - R + .05, 2 * R + .9, 2 * R + .9); g.setLineDash([]); }
       if (gb.t === 'lumber') { const R = BUILD.lumber.radius; g.strokeStyle = 'rgba(140,200,110,.6)'; g.lineWidth = .05; g.setLineDash([.15, .1]); circle(hover.x + .5, hover.y + .5, R + .5); g.stroke(); g.setLineDash([]); }
       if (isBoiler(gb)) { // highlight water neighbours
         g.strokeStyle = 'rgba(120,200,220,.6)'; g.lineWidth = .05;
@@ -3115,8 +3149,8 @@ function renderInfo() {
   }
   switch (b.t) {
     case 'drill': case 'drill2': {
-      const o = ORE_ITEM[ore[idx(b.x, b.y)]];
-      h += netKv(b) + (o ? kv('Louhii', `${icon(o)} ${ITEMS[o].n}`) + kv('Esiintymää jäljellä', fmtLeft(idx(b.x, b.y))) : '') + kv('Nopeus', `${Math.round(BUILD[b.t].rate * UP_SPEED[upl(b)] * 60)}/min täydellä paineella`) + kv('Höyry', Math.round(BUILD[b.t].use * UP_STEAM[upl(b)]) + ' yks.') + prog(b.prog);
+      const o = ORE_ITEM[b.oreT || ore[idx(b.x, b.y)]], dl = drillLeft(b), R = BUILD[b.t].reach;
+      h += netKv(b) + (o ? kv('Louhii', `${icon(o)} ${ITEMS[o].n}`) + kv(`Jäljellä (${2 * R + 1} × ${2 * R + 1})`, dl === Infinity ? 'ehtymätön' : fmt(dl)) : '') + kv('Nopeus', `${Math.round(BUILD[b.t].rate * UP_SPEED[upl(b)] * 60)}/min täydellä paineella`) + kv('Höyry', Math.round(BUILD[b.t].use * UP_STEAM[upl(b)]) + ' yks.') + prog(b.prog);
       break;
     }
     case 'lumber': {
@@ -3591,8 +3625,8 @@ function setOverlay(m) {
   overlay = m; const el = $('ovl');
   if (!m) { el.hidden = true; return; }
   const sw = (c, l) => `<span><i style="background:${c}"></i>${l}</span>`;
-  el.innerHTML = m === 1 ? `<b>Tilanäkymä</b>${sw('#5fd35f', 'toimii')}${sw('#e0c040', 'odottaa, tukossa tai alhainen paine')}${sw('#e0503c', 'ei höyryä, polttoainetta tai reittiä')}<span class="rate">T: höyryverkot</span>`
-    : `<b>Höyryverkot</b>${sw('#4fa3e0', 'kattila')}${sw('#d8eef2', 'säiliö')}${sw('#5fd35f', 'täysi paine')}${sw('#e0c040', 'paine laskee')}${sw('#e07832', 'vakava vaje')}${sw('#e0503c', 'ei kattilaa')}<span class="rate">T: sulje</span>`;
+  el.innerHTML = m === 3 ? `<b>Malmivarat</b>${sw('hsl(120,70%,48%)', 'täysi')}${sw('hsl(60,70%,48%)', 'puolet jäljellä')}${sw('hsl(0,70%,48%)', 'lähes tyhjä')}<span class="rate">Lähikuvassa näkyvät määrät · T: sulje</span>` : m === 1 ? `<b>Tilanäkymä</b>${sw('#5fd35f', 'toimii')}${sw('#e0c040', 'odottaa, tukossa tai alhainen paine')}${sw('#e0503c', 'ei höyryä, polttoainetta tai reittiä')}<span class="rate">T: höyryverkot</span>`
+    : `<b>Höyryverkot</b>${sw('#4fa3e0', 'kattila')}${sw('#d8eef2', 'säiliö')}${sw('#5fd35f', 'täysi paine')}${sw('#e0c040', 'paine laskee')}${sw('#e07832', 'vakava vaje')}${sw('#e0503c', 'ei kattilaa')}<span class="rate">${S.diff && S.diff !== 'sandbox' ? 'T: malmivarat' : 'T: sulje'}</span>`;
   el.hidden = false;
 }
 const CFG_FAMILY = t => (t === 'smelter2' ? 'smelter' : t === 'assembler2' ? 'assembler' : t);
@@ -3659,7 +3693,7 @@ function mapTipHTML() {
   if (b) {
     const name = b.t === 'hq' ? 'Pääkonttori' : b.t === 'station' ? stationName(b.sid) : b.t === 'mast' ? mastName(b.sid) : BUILD[b.t].n;
     let extra = '';
-    if (b.t === 'drill' || b.t === 'drill2') { const o = ORE_ITEM[ore[idx(b.x, b.y)]]; if (o) extra = `Louhii: ${ITEMS[o].n} · jäljellä ${fmtLeft(idx(b.x, b.y))}`; }
+    if (b.t === 'drill' || b.t === 'drill2') { const o = ORE_ITEM[b.oreT || ore[idx(b.x, b.y)]]; if (o) { const dl = drillLeft(b); extra = `Louhii: ${ITEMS[o].n} · jäljellä ${dl === Infinity ? 'ehtymätön' : fmt(dl)}`; } }
     else if (b.t === 'smelter' || b.t === 'smelter2' || b.t === 'saw') extra = b.inT ? `${ITEMS[b.inT].n} ${b.inN} → ${tableOf(b)[b.inT] ? ITEMS[tableOf(b)[b.inT].out].n : ''}` : 'Ei syötettä';
     else if (b.t === 'lumber') extra = `Puita ${b.outN} · säde ${BUILD.lumber.radius}`;
     else if (b.t === 'assembler' || b.t === 'assembler2') extra = b.rec ? `Resepti: ${ITEMS[b.rec].n}` : 'Ei reseptiä';
@@ -3792,7 +3826,7 @@ window.addEventListener('keydown', e => {
   else if (k === 'h') $('help').hidden = false;
   else if (k === 'i') toggleStats();
   else if (k === 'k') toggleBook();
-  else if (k === 't') setOverlay((overlay + 1) % 3);
+  else if (k === 't') setOverlay((overlay + 1) % (S.diff && S.diff !== 'sandbox' ? 4 : 3));
   else if (k === 'u') selectTool('upgrade');
   else if (k === 'o') { $('logM').hidden = false; renderLog(); }
   else if (k === 'l') { $('bpM').hidden = false; renderBps(); }
@@ -3857,8 +3891,11 @@ function setSpeed(v) {
 const BAD = { nonet: 1, nosteam: 1, nofuel: 1, nopath: 1, nooil: 1, depleted: 1 };
 let alertIdx = 0;
 function problems() { return blist.filter(b => BAD[b.st] && !(b.t === 'refinery' && b.st === 'nooil' && !onet(b))).concat(trains.filter(t => BAD[t.st])); }
+let lastAlertN = 0;
 function renderAlerts() {
   const n = problems().length, el = $('alertBtn');
+  if (n > lastAlertN && performance.now() - (renderAlerts.t || 0) > 10000) { sfx('alert'); renderAlerts.t = performance.now(); }
+  lastAlertN = n;
   el.hidden = n === 0; el.textContent = `Hälytykset ${n}`;
   el.title = 'Näytä seuraava kone, jolta puuttuu höyry tai polttoaine, tai veturi ilman reittiä';
 }
@@ -4004,6 +4041,7 @@ function sfx(kind) {
     case 'craft': tone(660, .05, 'triangle', .04); tone(880, .05, 'triangle', .03, .04); break;
     case 'steam': noise(.5, .1, 3200); tone(150, .12, 'square', .03); break;
     case 'error': tone(120, .14, 'sawtooth', .035, 0, 95); break;
+    case 'alert': tone(880, .25, 'sine', .05); tone(660, .35, 'sine', .045, .16); break;
     case 'hiss': noise(.35, .025, 5000); break;
     case 'chop': noise(.06, .2, 900); tone(140, .08, 'triangle', .06); noise(.05, .14, 700, .12); break;
     case 'thunder': noise(1.6, .22, 120); noise(.4, .12, 400); break;
