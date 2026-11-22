@@ -341,7 +341,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
     </div>
     <div class="chain">
       <b>Alkuun:</b> 1) Rakenna <b>Kattila</b> veden viereen ja lisää siihen hiiltä. 2) Vedä <b>Höyryputki</b> kattilasta tehdasalueelle. 3) Aseta <b>Höyrypora</b> malmin päälle putken viereen, nuoli kohti kuljetinta. 4) Ohjaa malmi <b>Sulattoon</b> ja levyt kuljettimella <b>Pääkonttoriin</b>. Kaikki pääkonttoriin tuotu siirtyy varastoosi.<br><br>
-      Kone syöttää tuotteensa nuolen suuntaan. Kuljetin syöttää koneeseen, jota se osoittaa. Putket, kattilat ja vierekkäiset koneet muodostavat höyryverkon. Jos verkon höyry ei riitä, sen koneet hidastuvat. Höyryputken voi vetää kuljettimen tai raiteen alta: rakenna putki suoraan niiden päälle. Jos materiaalit eivät riitä, rakennus jää suunnitelmaksi ja valmistuu itsestään, kun tavarat saapuvat. Puuttuvat hammasrattaat, kuparikelat ja putket valmistetaan tarvittaessa käsin levyistä.
+      Kone syöttää tuotteensa nuolen suuntaan. Kuljetin syöttää koneeseen, jota se osoittaa. Putket, kattilat ja vierekkäiset koneet muodostavat höyryverkon. Jos verkon höyry ei riitä, sen koneet hidastuvat. Höyryputken voi vetää kuljettimen tai raiteen alta: rakenna putki suoraan niiden päälle. Jos materiaalit eivät riitä, rakennus jää suunnitelmaksi ja valmistuu itsestään, kun tavarat saapuvat. Puuttuvat hammasrattaat, kuparikelat ja putket valmistetaan tarvittaessa käsin levyistä. Kun samalla hihnalla kulkee monta eri tavaraa, kuljeta hihna koneiden ohi ja syötä koneet Syöttökouralla: se poimii hihnalta vain tarvittavat tavarat, joten hihna ei jumiudu.
     </div>
     <button class="big" data-a="closeHelp">Aloita</button>
   </div>
@@ -413,7 +413,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.13';
+const VERSION = '0.14';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -500,6 +500,8 @@ const BUILD = {
                desc: 'Sahaa puusta lankkuja (1 puu → 2 lankkua, 1,5 s). Lankkuja tarvitaan asemiin, rahtimastoihin ja Auroran runkoon. Kuluttaa 15 höyryä.' },
   lumber:    { n: 'Metsuri',       key: '', lvl: 1, cost: { rautalevy: 10, hammasratas: 6, tiili: 6 }, use: 10, radius: 4,
                desc: 'Kaataa puita 4 ruudun säteellä ja istuttaa uudet tilalle; ne kasvavat kahdessa minuutissa. Syöttää puut nuolen suuntaan. Kuluttaa 10 höyryä.' },
+  inserter:  { n: 'Syöttökoura',   key: '', lvl: 1, cost: { rautalevy: 3, hammasratas: 2 },
+               desc: 'Jousikäyttöinen koura siirtää tavaroita takaa nuolen suuntaan. Hihnalta se poimii vain tavarat, jotka kohde ottaa vastaan; muut jatkavat matkaa. Ottaa myös varastoista ja koneiden valmiista tuotteista. Ei tarvitse höyryä.' },
   lamp:      { n: 'Kaasulyhty',    key: 'L', lvl: 0, cost: { rautalevy: 2, kuparilevy: 1 },
                desc: 'Valaisee ympäristöä öisin. Ei tarvitse höyryä.' },
   smelter2:  { n: 'Masuuni',       key: 'E', lvl: 3, size: 2, mul: 3, cost: { tiili: 60, teras: 12, venttiili: 4 }, use: 50,
@@ -523,7 +525,7 @@ const BUILD = {
   bigboiler: { n: 'Suurkattila',   key: 'K', lvl: 4, cost: { teras: 10, tiili: 20, venttiili: 4 }, gen: 320, burnT: 3.2, cap: 40,
                desc: 'Rakennetaan veden viereen. Tuottaa 320 höyryä.' },
 };
-const TOOL_ORDER = ['belt', 'pipe', 'drill', 'smelter', 'lumber', 'saw', 'boiler', 'chest', 'lamp', 'splitter', 'assembler', 'fastbelt', 'tunnel', 'drill2', 'smelter2', 'oilpipe', 'pumpjack', 'refinery', 'oilboiler', 'rail', 'signal', 'station', 'train', 'bigboiler', 'assembler2', 'mast', 'zep', 'dock'];
+const TOOL_ORDER = ['inserter', 'belt', 'pipe', 'drill', 'smelter', 'lumber', 'saw', 'boiler', 'chest', 'lamp', 'splitter', 'assembler', 'fastbelt', 'tunnel', 'drill2', 'smelter2', 'oilpipe', 'pumpjack', 'refinery', 'oilboiler', 'rail', 'signal', 'station', 'train', 'bigboiler', 'assembler2', 'mast', 'zep', 'dock'];
 const SURVEY = [
   { r: 44, cost: { rautalevy: 150, tiili: 80 } },
   { r: 56, cost: { teras: 120, hammasratas: 120, messinki: 60 } },
@@ -539,7 +541,7 @@ const DOCK_STAGES = [
 
 const PATENTS = [
   { n: 'Hammasvälitys', d: 'Patenttivirasto haluaa nähdä, että laakso pystyy sarjatuotantoon.',
-    cost: { rautalevy: 60, kuparilevy: 40 }, unl: 'Kokoonpanija, Jakaja, Messinki (kupari + sinkki), Saha, Metsuri' },
+    cost: { rautalevy: 60, kuparilevy: 40 }, unl: 'Kokoonpanija, Jakaja, Syöttökoura, Messinki (kupari + sinkki), Saha, Metsuri' },
   { n: 'Paineistettu höyry', d: 'Messinkiset osat ja tiilet painekattiloiden muurauksiin.',
     cost: { hammasratas: 60, kuparikela: 80, tiili: 60, messinki: 40 }, unl: 'Teräs (sulatto), Paineventtiili, Pikakuljetin, Maanalainen kuljetin' },
   { n: 'Hienomekaniikka', d: 'Venttiilit ja teräs avaavat tien kellosepän taitoihin ja rautateille.',
@@ -774,6 +776,7 @@ function makeB(t, x, y, d) {
     case 'mast': Object.assign(b, { sid: 0, mode: 'load', inv: {}, n: 0, tmr: 0 }); break;
     case 'chest': Object.assign(b, { inv: {}, n: 0, outOn: false, tmr: 0 }); break;
     case 'splitter': b.buf = []; b.rr = 0; b.filt = null; break;
+    case 'inserter': b.tm = 0; break;
     case 'hq': b.w = 3; b.h = 3; b.got = 0; break;
     case 'station': Object.assign(b, { sid: 0, mode: 'load', inv: {}, n: 0, tmr: 0 }); break;
   }
@@ -1061,7 +1064,7 @@ function rebuildOil() {
 function oilBegin() { for (const n of oilNets) { n.amt = 0; for (const m of n.members) n.amt += m.oil || 0; n.amt = Math.min(n.amt, n.cap); } }
 function oilEnd() { for (const n of oilNets) for (const m of n.members) m.oil = n.cap ? n.amt * oilCap(m) / n.cap : 0; }
 const netOf = b => (b && b.net != null ? nets[b.net] : null);
-const UPGRADABLE = { drill: 1, drill2: 1, smelter: 1, assembler: 1, pumpjack: 1, saw: 1, lumber: 1 };
+const UPGRADABLE = { inserter: 1, drill: 1, drill2: 1, smelter: 1, assembler: 1, pumpjack: 1, saw: 1, lumber: 1 };
 const mulOf = b => UP_SPEED[upl(b)] * (BUILD[b.t].mul || 1);
 const UP_SPEED = [1, 1, 1.5, 2.1], UP_STEAM = [1, 1, 1.35, 1.8];
 const UP_COST = [null, null, { kellokoneisto: 2, messinki: 6 }, { kellokoneisto: 4, venttiili: 4, teras: 6, voiteluoljy: 3 }];
@@ -1085,7 +1088,11 @@ function setRun(b, s) { b.act = Math.max(0, s); b.st = s < 0 ? 'nonet' : s <= 0 
 function outFront(b, dt, every) {
   if (b.n <= 0) return;
   b.tmr -= dt; if (b.tmr > 0) return; b.tmr = every;
-  for (const k in b.inv) { if (pushFront(b, k)) { b.inv[k]--; b.n--; if (!b.inv[k]) delete b.inv[k]; } break; }
+  const ks = Object.keys(b.inv); if (!ks.length) return;
+  for (let j = 0; j < ks.length; j++) {
+    const k = ks[((b._ri || 0) + j) % ks.length];
+    if (pushFront(b, k)) { b.inv[k]--; b.n--; if (!b.inv[k]) delete b.inv[k]; b._ri = (b._ri || 0) + j + 1; break; }
+  }
 }
 
 // ---- production statistics: 10 s buckets, 10 minutes of history
@@ -1159,7 +1166,10 @@ const UPD = {
       const lim = i === 0 ? 1 : it[i - 1].p - GAP;
       if (it[i].p < lim) it[i].p = Math.min(it[i].p + sp, lim);
     }
-    if (it.length && it[0].p >= 1 && (b.t === 'tunnel' && b.kind === 'in' ? tunnelPass(b, it[0].i) : insertAt(b.x + DX[b.d], b.y + DY[b.d], it[0].i, b.d, b))) it.shift();
+    if (it.length && it[0].p >= 1) {
+      if (b.t === 'tunnel' && b.kind === 'in' ? tunnelPass(b, it[0].i) : insertAt(b.x + DX[b.d], b.y + DY[b.d], it[0].i, b.d, b)) it.shift();
+      else { const tx = b.x + DX[b.d], ty = b.y + DY[b.d], tg = inB(tx, ty) ? grid[idx(tx, ty)] : null; if (tg && !tg.items && (tg.t === 'assembler' || tg.t === 'assembler2' || tg.t === 'smelter' || tg.t === 'smelter2' || tg.t === 'saw' || isBoiler(tg))) { tg._jam = it[0].i; tg._jamT = S.time; } }
+    }
   },
   drill(b, dt) {
     if (b.out) { if (pushFront(b, b.out)) b.out = null; else { b.st = 'blocked'; b.act = 0; return; } }
@@ -1205,6 +1215,30 @@ const UPD = {
   },
 };
 UPD.saw = UPD.smelter;
+// Inserter: takes from the tile behind and puts into the tile in front; only takes what the target accepts
+UPD.inserter = (b, dt) => {
+  b.tm -= dt; if (b.tm > 0) return;
+  b.tm = .15;
+  const bk = (b.d + 2) % 4, sx = b.x + DX[bk], sy = b.y + DY[bk];
+  const src = inB(sx, sy) ? grid[idx(sx, sy)] : null;
+  if (!src) { b.st = 'idle'; return; }
+  const moved = () => { b.tm = .6 / UP_SPEED[upl(b)]; b._sw = 1; b.st = 'work'; };
+  if (src.items) {
+    const seen = new Set();
+    for (let j = 0; j < src.items.length; j++) {
+      const it = src.items[j]; if (it.p < 0 || seen.has(it.i)) continue; seen.add(it.i);
+      if (pushFront(b, it.i)) { src.items.splice(j, 1); b._hold = it.i; moved(); return; }
+    }
+  } else if (src.inv && src.n > 0) {
+    for (const k in src.inv) if (src.inv[k] > 0 && pushFront(b, k)) { src.inv[k]--; src.n--; if (!src.inv[k]) delete src.inv[k]; b._hold = k; moved(); return; }
+  } else if (src.outN > 0) {
+    const k = src.t === 'assembler' || src.t === 'assembler2' ? src.rec : src.t === 'refinery' ? 'voiteluoljy' : src.t === 'lumber' ? 'puu' : src.outT;
+    if (k && pushFront(b, k)) { src.outN--; b._hold = k; moved(); return; }
+  } else if (src.out && (src.t === 'drill' || src.t === 'drill2')) {
+    if (pushFront(b, src.out)) { b._hold = src.out; src.out = null; moved(); return; }
+  }
+  b.st = 'idle';
+};
 UPD.lumber = (b, dt) => {
   if (b.outN > 0 && pushFront(b, 'puu')) b.outN--;
   if (b.outN >= 6) { b.act = 0; b.st = 'blocked'; return; }
@@ -1837,6 +1871,19 @@ const DRAW = {
     b._red = red;
     if (b.one) { g.save(); g.rotate(b.d * Math.PI / 2); g.beginPath(); g.moveTo(-.16, .02); g.lineTo(.16, .02); g.lineTo(0, -.2); g.closePath(); g.fillStyle = P.brassL; g.fill(); g.strokeStyle = P.soot; g.lineWidth = .02; g.stroke(); g.restore(); }
   },
+  inserter(b, t) {
+    circle(0, 0, .3); g.fillStyle = metal('#3a3d42', -.3, -.3, .3, .3); g.fill(); g.lineWidth = .04; g.strokeStyle = P.brassD; g.stroke();
+    g.save(); g.rotate(b.d * Math.PI / 2);
+    g.fillStyle = 'rgba(234,208,138,.25)'; g.beginPath(); g.moveTo(-.08, .42); g.lineTo(.08, .42); g.lineTo(0, .3); g.closePath(); g.fill();
+    const sw = b._sw || 0, th = (1 - sw) * Math.PI, ex = Math.sin(th) * .34, ey = -Math.cos(th) * .34;
+    g.strokeStyle = P.brass; g.lineWidth = .09; g.lineCap = 'round'; g.beginPath(); g.moveTo(0, 0); g.lineTo(ex * .55 + .08, ey * .55); g.lineTo(ex, ey); g.stroke(); g.lineCap = 'butt';
+    circle(ex * .55 + .08, ey * .55, .05); g.fillStyle = P.brassL; g.fill();
+    g.strokeStyle = P.ironL; g.lineWidth = .04; g.beginPath(); g.moveTo(ex - .07, ey - .04); g.lineTo(ex, ey + .05); g.lineTo(ex + .07, ey - .04); g.stroke();
+    if (sw > .55 && b._hold && ISPR[b._hold]) g.drawImage(ISPR[b._hold], ex - .12, ey - .12, .24, .24);
+    g.restore();
+    gear(.13, 8, (b._a || 0) * 2, P.brass, P.brassD);
+    arrow(b.d);
+  },
   saw(b, t) {
     g.save(); g.rotate(b.d * Math.PI / 2);
     frame(P.wood, P.woodD); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(-.06, -.45, .12, .9);
@@ -2098,7 +2145,7 @@ function boilerDraw(b, t, big, oil) {
   for (const [x, y] of chims) { circle(x, y, .09); g.fillStyle = P.ironD; g.fill(); circle(x, y, .055); g.fillStyle = P.soot; g.fill(); }
 }
 
-const LODABLE = { saw: 1, lumber: 1, belt: 1, fastbelt: 1, drill: 1, drill2: 1, smelter: 1, assembler: 1, chest: 1, splitter: 1, lamp: 1, boiler: 1, bigboiler: 1, oilboiler: 1, smelter2: 1, assembler2: 1, pumpjack: 1, refinery: 1, mast: 1 };
+const LODABLE = { inserter: 1, saw: 1, lumber: 1, belt: 1, fastbelt: 1, drill: 1, drill2: 1, smelter: 1, assembler: 1, chest: 1, splitter: 1, lamp: 1, boiler: 1, bigboiler: 1, oilboiler: 1, smelter2: 1, assembler2: 1, pumpjack: 1, refinery: 1, mast: 1 };
 const LOD_CACHE = new Map();
 let lodOn = false;
 function lodSprite(b) {
@@ -2293,6 +2340,9 @@ function render(fdt) {
       g.save(); g.shadowColor = `rgba(255,214,120,${pulse})`; g.shadowBlur = 14 * dpr; g.strokeStyle = `rgba(255,226,150,${.5 + .5 * pulse})`; g.lineWidth = .07;
       rr(b.x - .04, b.y - .04, (b.w || 1) + .08, (b.h || 1) + .08, .12); g.stroke(); g.restore();
     }
+    if (b._sw) b._sw = Math.max(0, b._sw - fdt * 2.2);
+    if (b.t === 'inserter' && b.st === 'work') b._a = (b._a || 0) + fdt * 2;
+    if (b._jamT != null && S.time - b._jamT < 1.5) { circle(b.x + (b.w || 1) - .18, b.y + .18, .1); g.fillStyle = '#e0c040'; g.fill(); g.strokeStyle = P.soot; g.lineWidth = .02; g.stroke(); }
     // status pip
     if (b.st === 'nosteam' || b.st === 'nofuel' || b.st === 'nonet') { circle(b.x + .82, b.y + .18, .1); g.fillStyle = '#e0623c'; g.fill(); }
     // emitters
@@ -2596,7 +2646,7 @@ function setHTML(el, h) { if (el._h !== h) { el.innerHTML = h; el._h = h; } }
 
 const CAT_KEYS = ['Z', 'X', 'C', 'V', 'B', 'N', 'M'];
 const CATS = [
-  { id: 'log', n: 'Logistiikka', tools: ['belt', 'fastbelt', 'tunnel', 'splitter', 'chest', 'lamp'] },
+  { id: 'log', n: 'Logistiikka', tools: ['belt', 'fastbelt', 'tunnel', 'splitter', 'inserter', 'chest', 'lamp'] },
   { id: 'prod', n: 'Tuotanto', tools: ['drill', 'drill2', 'smelter', 'smelter2', 'assembler', 'assembler2', 'lumber', 'saw'] },
   { id: 'energy', n: 'Energia ja öljy', tools: ['pipe', 'boiler', 'bigboiler', 'oilpipe', 'pumpjack', 'refinery', 'oilboiler'] },
   { id: 'move', n: 'Liikenne', tools: ['rail', 'signal', 'station', 'train', 'mast', 'zep'] },
@@ -2735,6 +2785,8 @@ function hint() {
   const has = t => blist.some(b => b.t === t);
   if (!has('boiler')) return 'Rakenna <b>Kattila{k:boiler}</b> vesirajaan. Vesiruudut korostuvat, kun kattila on valittuna.';
   if (!blist.some(b => isBoiler(b) && (boilerFuel(b) || b.burn > 0))) return 'Kattila tarvitsee hiiltä tai puuta. Klikkaa kattilaa tyhjällä kädellä ja lisää hiiltä, tai louhi hiiltä käsin klikkaamalla mustaa esiintymää.';
+  const jam = blist.find(b => b._jamT != null && S.time - b._jamT < 1.5 && (b.t === 'assembler' || b.t === 'assembler2'));
+  if (jam && S.level >= 1) return `${BUILD[jam.t].n} on tukossa: hihnalla on liikaa tavaraa, jota se ei ota vastaan (${ITEMS[jam._jam].n.toLowerCase()}). Kuljeta sekalainen hihna koneen ohi ja syötä se <b>Syöttökouralla{k:inserter}</b>, joka poimii vain tarvittavat tavarat.`;
   const unlinked = blist.find(b => BUILD[b.t] && BUILD[b.t].use && (!netOf(b) || !netOf(b).boilers));
   if (unlinked) return `${BUILD[unlinked.t].n} ei saa höyryä. Rakenna <b>Höyryputki{k:pipe}</b> kattilasta koneeseen. Vierekkäiset koneet johtavat höyryä toisilleen.`;
   if (!has('drill')) return 'Aseta <b>Höyrypora{k:drill}</b> rautamalmin päälle. Käännä R:llä niin, että nuoli osoittaa kuljettimeen.';
@@ -2811,6 +2863,7 @@ function renderInfo() {
   if (b.t === 'train' ? !trains.includes(b) : b.t === 'zep' ? !zeps.includes(b) : !blist.includes(b)) { closeInfo(); return; }
   const name = b.t === 'hq' ? 'Pääkonttori' : b.t === 'station' ? stationName(b.sid) : b.t === 'mast' ? mastName(b.sid) : b.t === 'zep' ? `Rahti-ilmalaiva ${b.zid || ''}` : BUILD[b.t].n;
   let h = `<h2>${name}<button class="closex" data-a="close" aria-label="Sulje">×</button></h2>`;
+  if (b._jamT != null && S.time - b._jamT < 1.5 && b._jam) h += `<div class="hint" style="margin:0 0 8px">Hihna on tukossa: kärjessä on <b>${ITEMS[b._jam].n.toLowerCase()}</b>, jota kone ei juuri nyt ota vastaan, joten muut tavarat eivät pääse perille. Ohjaa hihna koneen ohi ja rakenna väliin <b>Syöttökoura{k:inserter}</b>, joka poimii vain tarvittavat tavarat, tai erottele tavarat jakajan suodattimella.</div>`;
   if (b.st && STATUS[b.st]) {
     let s = STATUS[b.st][0]; if (b.st === 'low' && netOf(b)) s += ` (${Math.round(netOf(b).sat * 100)} %)`;
     if (b.t === 'train' && b.st === 'move') { const ts = blist.find(x => x.t === 'station' && x.sid === b.tgt); if (ts) s += ' → ' + stationName(ts.sid); if (b.blk > 0) s += ' (odottaa edellä olevaa veturia)'; else if (b.sig > 0) s += ' (odottaa opastinta)'; }
@@ -3255,6 +3308,7 @@ function mapTipHTML() {
     else if (b.t === 'pipe') { const n = netOf(b); extra = n ? `Höyry ${Math.round(n.last)} / ${Math.round(n.supply)}` : ''; }
     else if (b.t === 'oilpipe') { const n = onet(b); extra = n ? `Öljyä ${Math.round(n.amt)} / ${n.cap}` : ''; }
     if (b.up > 1) extra += ` · taso ${b.up}`;
+    if (b._jamT != null && S.time - b._jamT < 1.5 && b._jam) extra += `<div class="warn">Hihna tukossa: ${ITEMS[b._jam].n.toLowerCase()} ei mahdu sisään</div>`;
     return `<b>${name}</b>${st(b)}${extra ? `<div class="mut">${extra}</div>` : ''}<div class="mut">Klikkaa avataksesi</div>`;
   }
   const gh = ghostAt(hover.x, hover.y);
@@ -3447,7 +3501,7 @@ function buildMiniBase() {
   }
   x.putImageData(im, 0, 0);
 }
-const MINI_COL = { saw: '#c49058', lumber: '#6a8a3a', oilpipe: '#3a3346', pumpjack: '#8a6ab0', refinery: '#6a5f80', oilboiler: '#8a8496', mast: '#ead08a', dock: '#ead08a', smelter2: '#c0563a', assembler2: '#e0935c', tunnel: '#c06d3c', signal: '#6dff7a', lamp: '#ffe9a0', belt: '#9c8250', fastbelt: '#c06d3c', pipe: '#b8693a', rail: '#c8ccd0', station: '#4f8a76', hq: '#ead08a', chest: '#8a5d33', boiler: '#e0935c', bigboiler: '#ead08a' };
+const MINI_COL = { inserter: '#c9a14a', saw: '#c49058', lumber: '#6a8a3a', oilpipe: '#3a3346', pumpjack: '#8a6ab0', refinery: '#6a5f80', oilboiler: '#8a8496', mast: '#ead08a', dock: '#ead08a', smelter2: '#c0563a', assembler2: '#e0935c', tunnel: '#c06d3c', signal: '#6dff7a', lamp: '#ffe9a0', belt: '#9c8250', fastbelt: '#c06d3c', pipe: '#b8693a', rail: '#c8ccd0', station: '#4f8a76', hq: '#ead08a', chest: '#8a5d33', boiler: '#e0935c', bigboiler: '#ead08a' };
 function drawMini() {
   if (!miniBase && terrain) buildMiniBase();
   if ($('mini').hidden || !miniBase || !miniC.offsetWidth) return;
