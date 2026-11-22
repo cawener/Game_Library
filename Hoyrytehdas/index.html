@@ -339,7 +339,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
   .panel .collapse { display: none; }
   .panel.closed .pbody { display: block; }
   .panel h2 { font-size: 12px; letter-spacing: .05em; padding: 8px 10px 7px 12px; }
-  #info { width: calc(100% - 20px); bottom: 100px; max-height: 40%; }
+  #info { width: calc(100% - 20px); bottom: var(--toolsB, 100px); max-height: calc(100% - var(--toolsB, 100px) - var(--topH, 52px) - 60px); }
   #toast { top: calc(var(--topH, 52px) + 44px); width: calc(100% - 24px); }
   #toast div { font-size: 13px; padding: 6px 10px; text-align: center; }
   #tools { padding: 4px 6px 6px; max-width: calc(100% - 12px); }
@@ -576,7 +576,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.30';
+const VERSION = '0.31';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -1817,6 +1817,7 @@ let ctx = cv.getContext('2d'), g = ctx;
 let dpr = 1, CW = 0, CH = 0;
 function resize() {
   const tb = document.getElementById('top'); if (tb) document.documentElement.style.setProperty('--topH', tb.offsetHeight + 'px');
+  const tl = document.getElementById('tools'); if (tl) document.documentElement.style.setProperty('--toolsB', (innerHeight - tl.getBoundingClientRect().top + 8) + 'px');
   dpr = Math.min(2, window.devicePixelRatio || 1);
   CW = cv.clientWidth; CH = cv.clientHeight;
   cv.width = Math.round(CW * dpr); cv.height = Math.round(CH * dpr);
@@ -3326,7 +3327,14 @@ function buyPatent() {
 }
 
 // ---- info panel for selected building
-function openInfo(b) { selected = b; $('info').hidden = false; $('info')._h = null; renderInfo(); }
+function openInfo(b) {
+  { const tl = $('tools'); if (tl) document.documentElement.style.setProperty('--toolsB', (innerHeight - tl.getBoundingClientRect().top + 8) + 'px'); } selected = b; $('info').hidden = false; $('info')._h = null; renderInfo();
+  if (innerWidth <= 760 && b && b.x != null) { // keep the building visible above the info sheet on phones
+    const top = $('info').getBoundingClientRect().top, cy = (b.fy != null ? b.fy : b.y + (b.h || 1) / 2), sy = (cy - cam.y) * cam.z + CH / 2;
+    const tH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topH')) || 52;
+    if (sy > top - 30 || sy < tH + 40) cam.y = cy - ((tH + 40 + top) / 2 - CH / 2) / cam.z;
+  }
+}
 function closeInfo() { selected = null; $('info').hidden = true; }
 function netKv(b) { const n = netOf(b); return kv('Höyryverkko', !n ? '<span class="lack">ei yhteyttä</span>' : n.supply > 0 ? Math.round(n.sat * 100) + ' % paine' : '<span class="lack">ei kattilaa</span>'); }
 function kv(a, b) { return `<div class="kv"><span>${a}</span><span>${b}</span></div>`; }
