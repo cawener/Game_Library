@@ -270,6 +270,12 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 .lg span { color: var(--muted); font-variant-numeric: tabular-nums; }
 .bpsave { display: grid; grid-template-columns: 1fr auto; gap: 6px 8px; margin-bottom: 12px; }
 .bpsave label { grid-column: 1 / -1; }
+.diffs { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 6px 0 4px; }
+.diff { text-align: left; background: linear-gradient(#3a2c20, #231a13); border: 1px solid var(--brass-dark); border-radius: 6px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; color: var(--parchment); transition: border-color .15s, transform .15s; }
+.diff:hover, .diff:focus-visible { border-color: var(--brass-light); transform: translateY(-2px); }
+.diff b { font-family: var(--display); font-size: 17px; color: var(--brass-light); letter-spacing: .05em; }
+.diff span { font-size: 13px; line-height: 1.4; color: var(--muted); }
+.diff.hard b { color: #f08a6a; }
 .slots { display: grid; gap: 8px; }
 .slot { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid #3a2e22; border-radius: 4px; font-size: 13px; }
 .slot b { font-family: var(--display); color: var(--brass-light); font-size: 13px; }
@@ -338,6 +344,14 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
     <canvas class="banner" id="bannerHelp" aria-hidden="true"></canvas>
     <h1>Höyrytehdas <span class="ver" id="verHelp"></span></h1>
     <p class="lead">Olet saapunut Messinkilaakson laidalle. Pääkonttorin kello käy, mutta tehdas on vielä pelkkä piirustus. Rakenna höyryn voimin toimiva tuotantoketju, hanki patentit ja kokoa ilmalaiva Aurora.</p>
+    <div id="diffPick" hidden>
+      <h3>Valitse vaikeustaso</h3>
+      <div class="diffs">
+        <button class="diff" data-a="pickDiff" data-v="sandbox"><b>Sandbox</b><span>Malmit ja öljy eivät koskaan lopu. Rauhallinen rakentelu.</span></button>
+        <button class="diff" data-a="pickDiff" data-v="normal"><b>Normaali</b><span>Malmiruuduilla on oma, hyvin reilu määränsä. Poria ei käytännössä tarvitse siirtää.</span></button>
+        <button class="diff hard" data-a="pickDiff" data-v="hard"><b>Hullu!</b><span>Malmia on vähän ja öljy ehtyy. Porat tyhjentävät ruutunsa 10–30 minuutissa, ja uusia esiintymiä on etsittävä jatkuvasti.</span></button>
+      </div>
+    </div>
     <div class="keys">
       <kbd>Z X C V B</kbd><span>Valitse alapalkin luokka: Logistiikka, Tuotanto, Energia ja öljy, Liikenne, Telakka</span>
       <kbd>1 – 9</kbd><span>Valitse kortti avoimesta luokasta. Numerot seuraavat näkyviä kortteja vasemmalta oikealle</span>
@@ -369,7 +383,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <b>Alkuun:</b> 1) Rakenna <b>Kattila</b> veden viereen ja lisää siihen hiiltä. 2) Vedä <b>Höyryputki</b> kattilasta tehdasalueelle. 3) Aseta <b>Höyrypora</b> malmin päälle putken viereen, nuoli kohti kuljetinta. 4) Ohjaa malmi <b>Sulattoon</b> ja levyt kuljettimella <b>Pääkonttoriin</b>. Kaikki pääkonttoriin tuotu siirtyy varastoosi.<br><br>
       Kone syöttää tuotteensa nuolen suuntaan. Kuljetin syöttää koneeseen, jota se osoittaa. Putket, kattilat ja vierekkäiset koneet muodostavat höyryverkon. Jos verkon höyry ei riitä, sen koneet hidastuvat. Höyryputken voi vetää kuljettimen tai raiteen alta: rakenna putki suoraan niiden päälle. Jos materiaalit eivät riitä, rakennus jää suunnitelmaksi ja valmistuu itsestään, kun tavarat saapuvat. Puuttuvat hammasrattaat, kuparikelat ja putket valmistetaan tarvittaessa käsin levyistä. Kun samalla hihnalla kulkee monta eri tavaraa, kuljeta hihna koneiden ohi ja syötä koneet Syöttökouralla: se poimii hihnalta vain tarvittavat tavarat, joten hihna ei jumiudu.
     </div>
-    <button class="big" data-a="closeHelp">Aloita</button>
+    <button class="big" data-a="closeHelp" id="helpClose">Aloita</button>
   </div>
 </div>
 
@@ -450,7 +464,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
     <textarea id="saveTxt" spellcheck="false"></textarea>
     <div class="acts"><button class="sbtn" data-a="export">Vie ja kopioi</button><button class="sbtn" data-a="import">Lataa tekstistä</button></div>
     <h3>Uusi peli</h3>
-    <p class="lead">Nykyinen tehdas poistetaan ja uusi laakso luodaan. Tätä ei voi perua.</p>
+    <p class="lead">Nykyinen tehdas poistetaan ja uusi laakso luodaan. Valitset vaikeustason seuraavaksi. Tätä ei voi perua.</p>
     <div class="acts">
       <button class="big" data-a="newYes" style="flex:1">Aloita alusta</button>
       <button class="big" data-a="newNo" style="flex:1">Sulje</button>
@@ -463,7 +477,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.18';
+const VERSION = '0.19';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -491,6 +505,31 @@ const ITEMS = {
   lankku:       { n: 'Lankku',         c: '#c49058', s: 'plank' },
   raakaoljy:    { n: 'Raakaöljy',      c: '#2a2032', s: 'drop', fluid: true },
 };
+const DIFF = {
+  sandbox: { n: 'Sandbox', d: 'Malmit ja öljy eivät koskaan lopu. Rauhallinen rakentelu.', ore: 0, oil: 0 },
+  normal: { n: 'Normaali', d: 'Jokaisella malmiruudulla on oma määränsä, mutta se on hyvin reilu: poria ei käytännössä tarvitse siirtää.', ore: 30000, oil: 0 },
+  hard: { n: 'Hullu!', d: 'Malmia on vähän ja öljylähteet ehtyvät. Porat tyhjentävät ruutunsa nopeasti, ja uusia esiintymiä on etsittävä jatkuvasti.', ore: 550, oil: 22000 },
+};
+const diffOf = () => DIFF[S.diff || 'sandbox'];
+function oreTotal(i) {
+  const d = diffOf(), o = ore[i]; if (!o) return 0;
+  const base = o === 6 ? d.oil : d.ore; if (!base) return Infinity;
+  const x = i % W, y = (i / W) | 0;
+  return Math.round(base * (.6 + .7 * hash(x * 5 + 3, y * 7 + 1)) * (1 + Math.hypot(x - W / 2, y - H / 2) / 70));
+}
+const oreLeft = i => Math.max(0, oreTotal(i) - ((S.mined && S.mined[i]) || 0));
+function mineTile(i, n) {
+  if (!ore[i] || oreTotal(i) === Infinity) return;
+  S.mined = S.mined || {}; S.mined[i] = (S.mined[i] || 0) + n;
+  if (S.mined[i] >= oreTotal(i)) depleteTile(i);
+}
+function depleteTile(i) {
+  const x = i % W, y = (i / W) | 0, was = ore[i];
+  ore[i] = 0; tintC = null; invalidateChunk(x, y); miniBase = null;
+  for (let k = 0; k < 6; k++) particles.push({ x: x + .5, y: y + .5, vx: (Math.random() - .5) * 1.2, vy: -Math.random(), life: 0, max: .8, r: .1, col: 'rgba(150,130,100,' });
+  if (grid[i] && performance.now() - (depleteTile.t || 0) > 3000) { toast(`${was === 6 ? 'Öljylähde' : 'Esiintymä'} ehtyi: rakenna ${was === 6 ? 'pumppu' : 'pora'} uuteen paikkaan`); depleteTile.t = performance.now(); }
+}
+const fmtLeft = i => { const l = oreLeft(i); return l === Infinity ? 'ehtymätön' : fmt(l); };
 const ORE_ITEM = [null, 'rautamalmi', 'kuparimalmi', 'hiili', 'kivi', 'sinkkimalmi', null];
 
 // Smelter recipes keyed by input item
@@ -609,6 +648,7 @@ const STATUS = {
   idle: ['Odottaa raaka-aineita', 'warn'], blocked: ['Ulostulo tukossa', 'warn'], norecipe: ['Valitse resepti', 'warn'],
   burn: ['Polttaa', 'ok'], notrees: ['Ei puita lähellä', 'warn'], nofuel: ['Ei polttoainetta', 'bad'], standby: ['Valmiustilassa', 'ok'],
   nonet: ['Ei yhteyttä kattilaan', 'bad'], move: ['Matkalla', 'ok'], load: ['Lastaa', 'ok'], unload: ['Purkaa', 'ok'],
+  depleted: ['Esiintymä ehtyi – rakenna uuteen paikkaan', 'bad'],
   nopath: ['Ei reittiä seuraavalle asemalle', 'bad'], nostation: ['Ei asemia aikataulussa', 'warn'],
   nooil: ['Ei raakaöljyä', 'bad'], oilfull: ['Öljyputkisto täynnä', 'warn'], fly: ['Lentää', 'ok'], nomast: ['Tarvitaan vähintään kaksi mastoa', 'warn'],
 };
@@ -1233,7 +1273,8 @@ const UPD = {
     if (b.out) { if (pushFront(b, b.out)) b.out = null; else { b.st = 'blocked'; b.act = 0; return; } }
     const s = steam(b); setRun(b, s);
     b.prog += dt * b.act * BUILD[b.t].rate * UP_SPEED[upl(b)];
-    if (b.prog >= 1) { b.prog -= 1; const o = ORE_ITEM[ore[idx(b.x, b.y)]]; stat(o, 1, 'p'); if (!pushFront(b, o)) b.out = o; }
+    if (!ORE_ITEM[ore[idx(b.x, b.y)]]) { b.st = 'depleted'; b.act = 0; return; }
+    if (b.prog >= 1) { b.prog -= 1; const ti = idx(b.x, b.y), o = ORE_ITEM[ore[ti]]; stat(o, 1, 'p'); mineTile(ti, 1); if (!pushFront(b, o)) b.out = o; }
   },
   smelter(b, dt) {
     if (b.outN > 0 && pushFront(b, b.outT)) b.outN--;
@@ -1331,10 +1372,11 @@ function regrowTick() {
 UPD.fastbelt = UPD.belt; UPD.drill2 = UPD.drill; UPD.smelter2 = UPD.smelter; UPD.assembler2 = UPD.assembler;
 UPD.pumpjack = (b, dt) => {
   const n = onet(b);
+  if (ore[idx(b.x, b.y)] !== 6) { b.st = 'depleted'; b.act = 0; return; }
   if (n && n.amt >= n.cap - .01) { b.st = 'oilfull'; b.act = 0; return; }
   const s = steam(b); setRun(b, s);
   const made = BUILD.pumpjack.oil * dt * b.act * UP_SPEED[upl(b)];
-  if (n && made > 0) { const add = Math.min(made, n.cap - n.amt); n.amt += add; stat('raakaoljy', add, 'p'); }
+  if (n && made > 0) { const add = Math.min(made, n.cap - n.amt); n.amt += add; stat('raakaoljy', add, 'p'); mineTile(idx(b.x, b.y), add); }
 };
 UPD.refinery = (b, dt) => {
   if (b.outN > 0 && pushFront(b, 'voiteluoljy')) b.outN--;
@@ -3074,7 +3116,7 @@ function renderInfo() {
   switch (b.t) {
     case 'drill': case 'drill2': {
       const o = ORE_ITEM[ore[idx(b.x, b.y)]];
-      h += netKv(b) + kv('Louhii', `${icon(o)} ${ITEMS[o].n}`) + kv('Nopeus', `${Math.round(BUILD[b.t].rate * UP_SPEED[upl(b)] * 60)}/min täydellä paineella`) + kv('Höyry', Math.round(BUILD[b.t].use * UP_STEAM[upl(b)]) + ' yks.') + prog(b.prog);
+      h += netKv(b) + (o ? kv('Louhii', `${icon(o)} ${ITEMS[o].n}`) + kv('Esiintymää jäljellä', fmtLeft(idx(b.x, b.y))) : '') + kv('Nopeus', `${Math.round(BUILD[b.t].rate * UP_SPEED[upl(b)] * 60)}/min täydellä paineella`) + kv('Höyry', Math.round(BUILD[b.t].use * UP_STEAM[upl(b)]) + ' yks.') + prog(b.prog);
       break;
     }
     case 'lumber': {
@@ -3217,6 +3259,7 @@ function doAction(el) {
     case 'fold': el.closest('.panel').classList.toggle('closed'); el.textContent = el.closest('.panel').classList.contains('closed') ? '+' : '–'; return;
     case 'close': closeInfo(); return;
     case 'closeHelp': $('help').hidden = true; paused = false; return;
+    case 'pickDiff': S.diff = el.dataset.v; delete S.diffPending; $('help').hidden = true; syncHelp(); toast(`Vaikeustaso: ${DIFF[S.diff].n}. ${DIFF[S.diff].d}`); save(); return;
     case 'closeWin': $('win').hidden = true; return;
     case 'newYes': $('newg').hidden = true; newGame(); $('help').hidden = false; return;
     case 'newNo': $('newg').hidden = true; return;
@@ -3579,7 +3622,7 @@ function clickTile(t, mods) {
   }
   const o = ore[idx(t.x, t.y)];
   if (o && ORE_ITEM[o] && inRegion(t.x, t.y)) {
-    const it = ORE_ITEM[o]; give(it); stat(it, 1, 'p'); sfx('mine');
+    const it = ORE_ITEM[o]; give(it); stat(it, 1, 'p'); sfx('mine'); mineTile(idx(t.x, t.y), 1);
     floaters.push({ x: t.x + .5, y: t.y + .3, text: '+1 ' + ITEMS[it].n, life: 0 });
     puff(t.x + .5, t.y + .5, 3, 'rgba(150,130,100,');
     renderInv(); renderGoal();
@@ -3616,7 +3659,7 @@ function mapTipHTML() {
   if (b) {
     const name = b.t === 'hq' ? 'Pääkonttori' : b.t === 'station' ? stationName(b.sid) : b.t === 'mast' ? mastName(b.sid) : BUILD[b.t].n;
     let extra = '';
-    if (b.t === 'drill' || b.t === 'drill2') { const o = ORE_ITEM[ore[idx(b.x, b.y)]]; if (o) extra = `Louhii: ${ITEMS[o].n}`; }
+    if (b.t === 'drill' || b.t === 'drill2') { const o = ORE_ITEM[ore[idx(b.x, b.y)]]; if (o) extra = `Louhii: ${ITEMS[o].n} · jäljellä ${fmtLeft(idx(b.x, b.y))}`; }
     else if (b.t === 'smelter' || b.t === 'smelter2' || b.t === 'saw') extra = b.inT ? `${ITEMS[b.inT].n} ${b.inN} → ${tableOf(b)[b.inT] ? ITEMS[tableOf(b)[b.inT].out].n : ''}` : 'Ei syötettä';
     else if (b.t === 'lumber') extra = `Puita ${b.outN} · säde ${BUILD.lumber.radius}`;
     else if (b.t === 'assembler' || b.t === 'assembler2') extra = b.rec ? `Resepti: ${ITEMS[b.rec].n}` : 'Ei reseptiä';
@@ -3634,8 +3677,8 @@ function mapTipHTML() {
   if (!inRegion(hover.x, hover.y)) return '<b>Kartoittamaton</b><div class="mut">Laajenna laaksoa maanmittauksella</div>';
   const o = ore[i];
   if (tree[i]) return '<b>Metsä</b><div class="mut">Klikkaa kaataaksesi (3 puuta). Puut kaatuvat myös, kun niiden päälle rakennetaan.</div>';
-  if (o === 6) return '<b>Öljylähde</b><div class="mut">Rakenna päälle öljypumppu</div>';
-  if (o) return `<b>${ITEMS[ORE_ITEM[o]].n}</b><div class="mut">Klikkaa louhiaksesi käsin tai aseta pora päälle</div>`;
+  if (o === 6) return `<b>Öljylähde</b><div class="mut">Rakenna päälle öljypumppu</div>${oreTotal(i) !== Infinity ? `<div class="mut">Öljyä jäljellä ${fmtLeft(i)}</div>` : ''}`;
+  if (o) return `<b>${ITEMS[ORE_ITEM[o]].n}</b><div class="mut">Klikkaa louhiaksesi käsin tai aseta pora päälle</div>${oreTotal(i) !== Infinity ? `<div class="mut">Jäljellä ${fmtLeft(i)}</div>` : ''}`;
   if (terrain[i] === 1) return '<b>Vesi</b><div class="mut">Kattilat rakennetaan veden viereen</div>';
   return null;
 }
@@ -3727,6 +3770,7 @@ window.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   const modals = ['help', 'newg', 'stats', 'book', 'logM', 'bpM'];
   if (modals.some(id => !$(id).hidden)) {
+    if (S.diffPending && !$('help').hidden) return;
     if (k === 'escape' || (k === 'i' && !$('stats').hidden) || (k === 'k' && !$('book').hidden) || (k === 'o' && !$('logM').hidden) || (k === 'l' && !$('bpM').hidden)) modals.forEach(id => { $(id).hidden = true; });
     return;
   }
@@ -3775,6 +3819,8 @@ function restore(str) {
   const o = JSON.parse(str);
   if (!o || (o.v !== 1 && o.v !== 2)) throw new Error('bad save');
   S = o.S; genMap(S.seed); applyFelled(); miniBase = null;
+  if (S.mined) for (const k in S.mined) { const i = +k; if (ore[i] && S.mined[k] >= oreTotal(i)) ore[i] = 0; }
+  tintC = null; chunks = new Map();
   grid = new Array(W * H).fill(null); blist = o.b; trains = o.tr || []; zeps = o.zp || [];
   for (const b of blist) occupy(b, b);
   for (let i = 0; i < W * H; i++) if (tree[i] && grid[i]) { tree[i] = 0; (S.felled = S.felled || []).push(i); }
@@ -3784,15 +3830,20 @@ function restore(str) {
   if (o.v === 1) { give('putki', 80); setTimeout(() => toast('Päivitys: höyry kulkee nyt putkissa. Sait 80 putkea – yhdistä koneet kattiloihin Höyryputkella.'), 600); }
 }
 function save() { try { localStorage.setItem(SAVE_KEY, serialize()); return true; } catch (e) { return false; } }
+function syncHelp() {
+  const pend = !!(S && S.diffPending);
+  $('diffPick').hidden = !pend; $('helpClose').hidden = pend;
+  $('ver').textContent = 'v' + VERSION + (S && S.diff && !pend ? ' · ' + DIFF[S.diff].n : '');
+}
 function newGame() {
-  S = { seed: (Math.random() * 1e9) | 0, inv: { rautalevy: 80, tiili: 50, kuparilevy: 20, hiili: 30, putki: 30 }, level: 0, time: 0, won: false, sid: 0, region: 32, tut: 0, ghosts: [], felled: [] };
+  S = { diff: 'normal', diffPending: true, mined: {}, seed: (Math.random() * 1e9) | 0, inv: { rautalevy: 80, tiili: 50, kuparilevy: 20, hiili: 30, putki: 30 }, level: 0, time: 0, won: false, sid: 0, region: 32, tut: 0, ghosts: [], felled: [] };
   hist = []; ghostGrid = new Map();
   genMap(S.seed); miniBase = null;
   grid = new Array(W * H).fill(null); blist = []; trains = []; zeps = [];
   const hq = makeB('hq', W / 2 - 1, H / 2 - 1, 0); blist.push(hq); occupy(hq, hq);
   cam = { x: W / 2 + .5, y: H / 2 + .5, z: 40 };
   tool = null; selected = null; deliv = []; particles = []; stats = new Map(); netsDirty = true;
-  closeInfo(); renderTools(); renderInv(); renderGoal();
+  closeInfo(); renderTools(); renderInv(); renderGoal(); syncHelp();
 }
 
 /* =========================================================
@@ -3803,7 +3854,7 @@ function setSpeed(v) {
   if (v) lastSpeed = v; speed = v;
   for (const b of document.querySelectorAll('[data-a="spd"]')) b.classList.toggle('on', +b.dataset.v === v);
 }
-const BAD = { nonet: 1, nosteam: 1, nofuel: 1, nopath: 1, nooil: 1 };
+const BAD = { nonet: 1, nosteam: 1, nofuel: 1, nopath: 1, nooil: 1, depleted: 1 };
 let alertIdx = 0;
 function problems() { return blist.filter(b => BAD[b.st] && !(b.t === 'refinery' && b.st === 'nooil' && !onet(b))).concat(trains.filter(t => BAD[t.st])); }
 function renderAlerts() {
@@ -4039,17 +4090,18 @@ function start(data) {
   const src = (data && data.save) || (() => { try { return localStorage.getItem(SAVE_KEY); } catch (e) { return null; } })();
   if (src) { try { restore(src); loaded = true; } catch (e) { loaded = false; } }
   if (!loaded) { newGame(); $('help').hidden = false; }
+  if (S.diffPending) $('help').hidden = false;
   if (innerWidth < 760) for (const el of document.querySelectorAll('#invP,#goalP')) { el.classList.add('closed'); el.querySelector('.collapse').textContent = '+'; }
   renderTools(); renderInv(); renderGoal();
   $('muteBtn').textContent = muted ? 'Ääni pois' : 'Ääni päällä';
-  $('ver').textContent = 'v' + VERSION; $('verHelp').textContent = 'v' + VERSION;
+  $('verHelp').textContent = 'v' + VERSION; syncHelp();
   requestAnimationFrame(t => { lastT = t; loop(t); });
 }
 window.claude?.hot?.snapshot?.(() => ({ save: serialize() }));
 const hot = window.claude?.hot;
 if (hot?.ready) hot.ready(start); else start(hot?.data ?? {});
 window.__setCam = (x, y) => { cam.x = x; cam.y = y; };
-window.__render = f => render(f); window.__cam = () => cam;
+window.__render = f => render(f); window.__cam = () => cam; window.__oreTotal = i => oreTotal(i);
 window.__tree = (x, y) => { if (x != null) return tree[idx(x, y)]; for (let r = 3; r < 50; r++) for (let dx = -r; dx <= r; dx++) { const X = 64 + dx, Y = 64 - r; if (tree[idx(X, Y)] && inRegion(X, Y)) return { x: X, y: Y }; } return null; };
 window.__game = { get zeps() { return zeps; }, get S() { return S; }, get blist() { return blist; }, get trains() { return trains; }, get nets() { return nets; }, grid: () => grid, rateOf, tick, place, placeCheck, ore: () => ore, terrain: () => terrain, idx, makeB, insertAt };
 </script>
