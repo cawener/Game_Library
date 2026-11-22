@@ -71,6 +71,8 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
   box-shadow: 0 2px 12px rgba(0,0,0,.6);
 }
 .brand { font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: .12em; color: var(--brass-light); text-shadow: 0 1px 0 #000; }
+.ver { font-family: var(--body); font-weight: 500; font-size: 12px; letter-spacing: .04em; color: var(--muted); vertical-align: middle; border: 1px solid #4a3a26; border-radius: 3px; padding: 0 5px; margin-left: 4px; }
+#tools .tabs .tk { display: inline-block; min-width: 16px; margin-right: 6px; padding: 0 4px; border: 1px solid var(--brass-dark); border-radius: 3px; font-family: var(--body); font-size: 10px; color: var(--brass); letter-spacing: 0; }
 #gauge { width: 46px; height: 46px; }
 .steam { display: flex; flex-direction: column; line-height: 1.15; font-variant-numeric: tabular-nums; }
 .steam .lbl { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
@@ -135,12 +137,13 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
   display: flex; gap: 6px; padding: 8px; max-width: calc(100% - 20px); overflow-x: auto;
 }
 .tool {
-  position: relative; flex: 0 0 auto; width: 62px; height: 68px; padding: 5px 2px 3px;
+  position: relative; flex: 0 0 auto; width: 64px; height: 78px; padding: 15px 2px 4px; text-align: center; justify-content: flex-start;
   background: radial-gradient(ellipse at 50% 30%, #3e3022, #231a13 75%); border: 1px solid var(--brass-dark); border-radius: 6px;
   display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10.5px; line-height: 1.1; color: var(--parchment);
   box-shadow: inset 0 1px 0 rgba(255,230,170,.12), 0 2px 4px rgba(0,0,0,.45); transition: transform .12s, border-color .12s, box-shadow .12s;
 }
 .tool:hover { transform: translateY(-2px); }
+.tool .k.l { font-size: 8px; top: 1px; left: 3px; letter-spacing: -.02em; }
 .tool.poor::after { content: ""; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--bad); }
 #tools { flex-direction: column; align-items: stretch; gap: 6px !important; padding: 6px 8px 8px; }
 #tools .tabs { display: flex; gap: 2px; border-bottom: 1px solid #3a2e22; }
@@ -149,7 +152,8 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 #tools .tabs button:hover { color: var(--parchment); }
 #tools .row { display: flex; gap: 5px; overflow-x: auto; scrollbar-width: thin; }
 #tools .sep { width: 1px; background: #3a2e22; margin: 4px 3px; flex: 0 0 auto; }
-.tool img { width: 36px; height: 36px; filter: drop-shadow(0 2px 2px rgba(0,0,0,.5)); }
+.tool img { width: 34px; height: 34px; flex: 0 0 auto; filter: drop-shadow(0 2px 2px rgba(0,0,0,.5)); }
+.tool .nm { flex: 1; display: flex; align-items: center; justify-content: center; width: 100%; text-align: center; line-height: 1.1; }
 #tools { scrollbar-width: thin; scrollbar-color: var(--brass-dark) transparent; gap: 4px; }
 .tool .k { position: absolute; top: 2px; left: 4px; font-size: 10px; color: var(--brass); font-weight: 700; }
 .tool:hover { border-color: var(--brass); }
@@ -218,7 +222,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 .filt { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin: 6px 0; }
 .filt button { background: #2a2018; border: 1px solid var(--brass-dark); border-radius: 4px; padding: 3px; display: flex; justify-content: center; }
 .filt button.on { border-color: var(--brass-light); background: #4a3922; }
-.tool .big-ch { font-size: 30px; line-height: 40px; height: 40px; color: var(--brass-light); }
+.tool .big-ch { font-size: 28px; line-height: 34px; height: 34px; flex: 0 0 auto; color: var(--brass-light); }
 .ach { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
 .ach div { border: 1px solid #3a2e22; border-radius: 4px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; opacity: .55; }
 .ach div.got { opacity: 1; border-color: var(--brass); background: rgba(201,161,74,.08); }
@@ -252,7 +256,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 
 <header id="top">
   <canvas id="logo" width="60" height="60" aria-hidden="true"></canvas>
-  <div class="brand">Höyrytehdas</div>
+  <div class="brand">Höyrytehdas <span class="ver" id="ver"></span></div>
   <canvas id="gauge" width="92" height="92" aria-label="Höyrymittari"></canvas>
   <div class="steam"><span class="lbl">Höyry</span><b id="steamTxt">0 / 0</b></div>
   <div class="steam"><span class="lbl">Paine</span><b id="presTxt">–</b></div>
@@ -294,10 +298,11 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 <div id="help" class="modal" hidden>
   <div class="panel">
     <canvas class="banner" id="bannerHelp" aria-hidden="true"></canvas>
-    <h1>Höyrytehdas</h1>
+    <h1>Höyrytehdas <span class="ver" id="verHelp"></span></h1>
     <p class="lead">Olet saapunut Messinkilaakson laidalle. Pääkonttorin kello käy, mutta tehdas on vielä pelkkä piirustus. Rakenna höyryn voimin toimiva tuotantoketju, hanki patentit ja kokoa ilmalaiva Aurora.</p>
     <div class="keys">
-      <kbd>1 – 0</kbd><span>Valitse rakennus alapalkista. Kirjaimet: L lyhty, U maanalainen kuljetin, E masuuni, T rata, O opastin, Y asema, V veturi, K suurkattila, J tehdashalli, P telakka, Z öljyputki, G öljypumppu, F jalostamo</span>
+      <kbd>Z X C V B</kbd><span>Valitse alapalkin luokka: Logistiikka, Tuotanto, Energia ja öljy, Liikenne, Telakka</span>
+      <kbd>1 – 9</kbd><span>Valitse kortti avoimesta luokasta. Numerot seuraavat näkyviä kortteja vasemmalta oikealle</span>
       <kbd>I</kbd><span>Tuotantotilastot</span>
       <kbd>Vasen hiiri</kbd><span>Rakenna. Kuljettimet: vedä hiirellä, suunta seuraa vetoa</span>
       <kbd>Oikea hiiri</kbd><span>Pura rakennus (materiaalit palautuvat)</span>
@@ -307,11 +312,11 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <kbd>Ctrl + Z</kbd><span>Kumoa viimeisin rakentaminen tai purku</span>
       <kbd>Osoita</kbd><span>Tyhjällä kädellä hiiren alla olevan kohteen tiedot näkyvät leijuvassa ruudussa</span>
       <kbd>Välilyönti</kbd><span>Tauko. Nopeus myös yläpalkista (1×, 2×, 4×)</span>
-      <kbd>C / B</kbd><span>Kopioi alue kaavaksi (vedä suorakulmio) / liitä kaava. R kääntää kaavaa</span>
+      <kbd>Ctrl + C / Ctrl + V</kbd><span>Kopioi alue kaavaksi (vedä suorakulmio) / liitä kaava. R kääntää kaavaa</span>
       <kbd>Shift + purku</kbd><span>Pura kokonainen alue vetämällä</span>
-      <kbd>N</kbd><span>Vuorokausirytmi päälle tai pois. Yöllä kaasulyhdyt (L) ja uunit valaisevat</span>
+      <kbd>N</kbd><span>Vuorokausirytmi päälle tai pois. Yöllä kaasulyhdyt ja uunit valaisevat</span>
       <kbd>M</kbd><span>Minikartta näkyviin tai piiloon. Klikkaa karttaa siirtyäksesi</span>
-      <kbd>X</kbd><span>Purkutyökalu</span>
+      <kbd>Delete</kbd><span>Purkutyökalu</span>
       <kbd>WASD / nuolet</kbd><span>Liiku. Myös vetämällä tyhjällä kädellä</span>
       <kbd>Rulla</kbd><span>Zoomaa</span>
       <kbd>Klikkaus</kbd><span>Tyhjällä kädellä: louhi malmia käsin tai avaa rakennuksen tiedot</span>
@@ -381,6 +386,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
+const VERSION = '0.11';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -2513,6 +2519,7 @@ const icon = (k, cls = 'ic') => `<img class="${cls}" src="${IURL[k]}" alt="">`;
 function toast(msg) { const d = document.createElement('div'); d.textContent = msg; $('toast').appendChild(d); setTimeout(() => d.remove(), 3300); }
 function setHTML(el, h) { if (el._h !== h) { el.innerHTML = h; el._h = h; } }
 
+const CAT_KEYS = ['Z', 'X', 'C', 'V', 'B', 'N', 'M'];
 const CATS = [
   { id: 'log', n: 'Logistiikka', tools: ['belt', 'fastbelt', 'tunnel', 'splitter', 'chest', 'lamp'] },
   { id: 'prod', n: 'Tuotanto', tools: ['drill', 'drill2', 'smelter', 'smelter2', 'assembler', 'assembler2', 'lumber', 'saw'] },
@@ -2520,22 +2527,29 @@ const CATS = [
   { id: 'move', n: 'Liikenne', tools: ['rail', 'signal', 'station', 'train', 'mast', 'zep'] },
   { id: 'dock', n: 'Telakka', tools: ['dock'] },
 ];
+CATS.forEach((c, i) => { c.key = CAT_KEYS[i]; });
 let curCat = 'log';
+const visTools = c => c.tools.filter(unlocked);
+// keyboard hint for a building, e.g. "C → 2" (category key, card number)
+function kh(t) {
+  const c = CATS.find(c => c.tools.includes(t)); if (!c || !unlocked(t)) return '';
+  const n = visTools(c).indexOf(t) + 1; return `${c.key} → ${n === 10 ? 0 : n}`;
+}
+const fillKeys = str => str.replace(/\{k:(\w+)\}/g, (_, t) => { const k = kh(t); return k ? ` (${k})` : ''; });
 function renderTools() {
   if (tool && BUILD[tool]) { const c = CATS.find(c => c.tools.includes(tool)); if (c) curCat = c.id; }
   let h = '<div class="tabs" role="tablist">';
-  for (const c of CATS) if (c.tools.some(unlocked)) h += `<button role="tab" class="${c.id === curCat ? 'on' : ''}" data-a="cat" data-v="${c.id}">${c.n}</button>`;
+  for (const c of CATS) if (c.tools.some(unlocked)) h += `<button role="tab" class="${c.id === curCat ? 'on' : ''}" data-a="cat" data-v="${c.id}"><span class="tk">${c.key}</span>${c.n}</button>`;
   h += '</div><div class="row">';
   const cat = CATS.find(c => c.id === curCat) || CATS[0];
-  for (const k of cat.tools) {
-    if (!unlocked(k)) continue;
-    h += `<button class="tool${tool === k ? ' on' : ''}${affordable(BUILD[k].cost) ? '' : ' poor'}" data-tool="${k}" aria-label="${BUILD[k].n}"><span class="k">${BUILD[k].key}</span><img src="${TURL[k]}" alt="">${BUILD[k].n}</button>`;
-  }
+  visTools(cat).forEach((k, i) => {
+    h += `<button class="tool${tool === k ? ' on' : ''}${affordable(BUILD[k].cost) ? '' : ' poor'}" data-tool="${k}" aria-label="${BUILD[k].n}"><span class="k">${i === 9 ? 0 : i + 1}</span><img src="${TURL[k]}" alt=""><span class="nm">${BUILD[k].n}</span></button>`;
+  });
   h += '<span class="sep"></span>';
-  h += `<button class="tool${tool === 'copy' ? ' on' : ''}" data-tool="copy" aria-label="Kopioi alue"><span class="k">C</span><img src="${TURL.copy}" alt="">Kopioi</button>`;
-  if (S.clip) h += `<button class="tool${tool === 'paste' ? ' on' : ''}" data-tool="paste" aria-label="Liitä kaava"><span class="k">B</span><img src="${TURL.paste}" alt="">Liitä</button>`;
-  h += `<button class="tool${tool === 'remove' ? ' on' : ''}" data-tool="remove" aria-label="Pura"><span class="k">X</span><img src="${TURL.remove}" alt="">Pura</button>`;
-  h += `<button class="tool" data-a="rotTool" aria-label="Käännä"><span class="k">R</span><span class="big-ch">&#x21bb;</span>Käännä</button>`;
+  h += `<button class="tool${tool === 'copy' ? ' on' : ''}" data-tool="copy" aria-label="Kopioi alue"><span class="k l">Ctrl+C</span><img src="${TURL.copy}" alt=""><span class="nm">Kopioi</span></button>`;
+  if (S.clip) h += `<button class="tool${tool === 'paste' ? ' on' : ''}" data-tool="paste" aria-label="Liitä kaava"><span class="k l">Ctrl+V</span><img src="${TURL.paste}" alt=""><span class="nm">Liitä</span></button>`;
+  h += `<button class="tool${tool === 'remove' ? ' on' : ''}" data-tool="remove" aria-label="Pura"><span class="k">Del</span><img src="${TURL.remove}" alt=""><span class="nm">Pura</span></button>`;
+  h += `<button class="tool" data-a="rotTool" aria-label="Käännä"><span class="k">R</span><span class="big-ch">&#x21bb;</span><span class="nm">Käännä</span></button>`;
   setHTML($('tools'), h + '</div>');
 }
 function costHTML(cost) {
@@ -2596,12 +2610,12 @@ function nearestTile(pred, maxR = 40) {
 const bOf = t => blist.find(b => b.t === t);
 const TUT = [
   { t: 'Louhi hiiltä käsin: klikkaa mustaa hiiliesiintymää tyhjällä kädellä viisi kertaa.', done: () => (S.made?.hiili || 0) >= 5 || !!blist.find(isBoiler), at: () => nearestTile((x, y, i) => ore[i] === 3 && !grid[i]) },
-  { t: 'Valitse Kattila (5) ja rakenna se vesirajaan. Kattila tarvitsee vettä viereensä.', done: () => !!blist.find(isBoiler), at: () => nearestTile((x, y, i) => !terrain[i] && !grid[i] && nearWater(x, y)) },
+  { t: 'Valitse Kattila{k:boiler} ja rakenna se vesirajaan. Kattila tarvitsee vettä viereensä.', done: () => !!blist.find(isBoiler), at: () => nearestTile((x, y, i) => !terrain[i] && !grid[i] && nearWater(x, y)) },
   { t: 'Klikkaa kattilaa tyhjällä kädellä ja valitse Lisää 10 hiiltä.', done: () => blist.some(b => isBoiler(b) && (b.fuel > 0 || b.burn > 0)), at: () => blist.find(isBoiler) },
-  { t: 'Valitse Höyrypora (3) ja aseta se rautamalmin (sinertävät kivet) päälle.', done: () => blist.some(b => b.t === 'drill' && ore[idx(b.x, b.y)] === 1), at: () => nearestTile((x, y, i) => ore[i] === 1 && !grid[i]) },
-  { t: 'Vedä Höyryputki (2) kattilasta poraan. Putket, kattilat ja vierekkäiset koneet muodostavat höyryverkon.', done: () => blist.some(b => b.t === 'drill' && netOf(b) && netOf(b).boilers), at: () => bOf('drill') },
-  { t: 'Rakenna Sulatto (4) poran nuolen eteen. Pora syöttää malmin suoraan sulattoon, ja sulatto tarvitsee myös höyryä.', done: () => !!bOf('smelter'), at: () => { const d = bOf('drill'); return d ? { x: d.x + DX[d.d], y: d.y + DY[d.d] } : null; } },
-  { t: 'Johda rautalevyt kuljettimella (1) pääkonttoriin: valitse kuljetin ja vedä hiirellä sulatosta pääkonttorin reunaan.', done: () => (bOf('hq')?.got || 0) > 0, at: () => bOf('hq') },
+  { t: 'Valitse Höyrypora{k:drill} ja aseta se rautamalmin (sinertävät kivet) päälle.', done: () => blist.some(b => b.t === 'drill' && ore[idx(b.x, b.y)] === 1), at: () => nearestTile((x, y, i) => ore[i] === 1 && !grid[i]) },
+  { t: 'Vedä Höyryputki{k:pipe} kattilasta poraan. Putket, kattilat ja vierekkäiset koneet muodostavat höyryverkon.', done: () => blist.some(b => b.t === 'drill' && netOf(b) && netOf(b).boilers), at: () => bOf('drill') },
+  { t: 'Rakenna Sulatto{k:smelter} poran nuolen eteen. Pora syöttää malmin suoraan sulattoon, ja sulatto tarvitsee myös höyryä.', done: () => !!bOf('smelter'), at: () => { const d = bOf('drill'); return d ? { x: d.x + DX[d.d], y: d.y + DY[d.d] } : null; } },
+  { t: 'Johda rautalevyt kuljettimella{k:belt} pääkonttoriin: valitse kuljetin ja vedä hiirellä sulatosta pääkonttorin reunaan.', done: () => (bOf('hq')?.got || 0) > 0, at: () => bOf('hq') },
   { t: 'Hienoa, tuotantolinja toimii! Rakenna samanlainen linja kuparimalmille ja hae ensimmäinen patentti oikean reunan paneelista.', done: () => S.level >= 1, at: () => nearestTile((x, y, i) => ore[i] === 2 && !grid[i]) },
 ];
 let tutTarget = null, tutT = 0;
@@ -2636,15 +2650,15 @@ function drawTutArrow() {
 }
 function hint() {
   const has = t => blist.some(b => b.t === t);
-  if (!has('boiler')) return 'Rakenna <b>Kattila (5)</b> vesirajaan. Vesiruudut korostuvat, kun kattila on valittuna.';
+  if (!has('boiler')) return 'Rakenna <b>Kattila{k:boiler}</b> vesirajaan. Vesiruudut korostuvat, kun kattila on valittuna.';
   if (!blist.some(b => isBoiler(b) && (boilerFuel(b) || b.burn > 0))) return 'Kattila tarvitsee hiiltä tai puuta. Klikkaa kattilaa tyhjällä kädellä ja lisää hiiltä, tai louhi hiiltä käsin klikkaamalla mustaa esiintymää.';
   const unlinked = blist.find(b => BUILD[b.t] && BUILD[b.t].use && (!netOf(b) || !netOf(b).boilers));
-  if (unlinked) return `${BUILD[unlinked.t].n} ei saa höyryä. Rakenna <b>Höyryputki (2)</b> kattilasta koneeseen. Vierekkäiset koneet johtavat höyryä toisilleen.`;
-  if (!has('drill')) return 'Aseta <b>Höyrypora (3)</b> rautamalmin päälle. Käännä R:llä niin, että nuoli osoittaa kuljettimeen.';
-  if (!has('smelter')) return 'Vie malmi kuljettimilla <b>Sulattoon (4)</b>. Sulatto syöttää levyt nuolensa suuntaan.';
+  if (unlinked) return `${BUILD[unlinked.t].n} ei saa höyryä. Rakenna <b>Höyryputki{k:pipe}</b> kattilasta koneeseen. Vierekkäiset koneet johtavat höyryä toisilleen.`;
+  if (!has('drill')) return 'Aseta <b>Höyrypora{k:drill}</b> rautamalmin päälle. Käännä R:llä niin, että nuoli osoittaa kuljettimeen.';
+  if (!has('smelter')) return 'Vie malmi kuljettimilla <b>Sulattoon{k:smelter}</b>. Sulatto syöttää levyt nuolensa suuntaan.';
   if (S.level === 0 && !deliv.length && !blist.find(b => b.t === 'hq').got) return 'Johda levyt kuljettimella <b>Pääkonttoriin</b>. Kaikki sinne tuleva siirtyy varastoosi.';
   if (!blist.some(b => isBoiler(b) && b.fuel > 0) && blist.some(b => isBoiler(b))) return 'Kattilat ovat sammumassa. Automatisoi hiilen syöttö: pora hiilen päälle ja kuljetin kattilaan.';
-  if (S.level === 1 && !has('assembler')) return 'Rakenna <b>Kokoonpanija (8)</b>, valitse resepti ja syötä raaka-aineet kuljettimella.';
+  if (S.level === 1 && !has('assembler')) return 'Rakenna <b>Kokoonpanija{k:assembler}</b>, valitse resepti ja syötä raaka-aineet kuljettimella.';
   if (S.level === 1 && !(S.inv.messinki > 0)) return 'Messinki tehdään kokoonpanijassa kuparilevyistä ja sinkkiharkoista. Vaaleanvihreät kiteet ovat sinkkimalmia.';
   if (S.level === 3 && !has('rail')) return 'Rautatie on käytössä. Rakenna lastausasema kaukaisen esiintymän luo, purkuasema tehtaalle, yhdistä ne raiteella ja aseta veturi raiteelle.';
   return null;
@@ -2652,12 +2666,12 @@ function hint() {
 function renderGoal() {
   let h = '';
   if (S.tut != null && S.tut < TUT.length) {
-    h += `<div class="tut"><div class="pat-no">Opastus ${S.tut + 1} / ${TUT.length}</div><p>${TUT[S.tut].t}</p><button class="sbtn" data-a="tutSkip">Ohita opastus</button></div>`;
+    h += `<div class="tut"><div class="pat-no">Opastus ${S.tut + 1} / ${TUT.length}</div><p>${fillKeys(TUT[S.tut].t)}</p><button class="sbtn" data-a="tutSkip">Ohita opastus</button></div>`;
   }
   if (S.level >= PATENTS.length) {
     const dk = blist.find(b => b.t === 'dock');
     h = S.ships ? `<p class="pat-name">Aurora on ilmassa</p><p class="pat-desc">Laivastossa ${S.ships} ilmalaivaa. Telakka voi rakentaa lisää.</p>`
-      : `<p class="pat-name">Rakenna Aurora</p><p class="pat-desc">${dk ? `Telakalla työn alla: ${DOCK_STAGES[Math.min(dk.stage, 2)].n} (vaihe ${Math.min(dk.stage + 1, 3)} / 3). Avaa telakka nähdäksesi tarvittavat osat.` : 'Rakenna Ilmalaivatelakka (P) ja johda osat sinne kuljettimilla.'}</p>`;
+      : `<p class="pat-name">Rakenna Aurora</p><p class="pat-desc">${dk ? `Telakalla työn alla: ${DOCK_STAGES[Math.min(dk.stage, 2)].n} (vaihe ${Math.min(dk.stage + 1, 3)} / 3). Avaa telakka nähdäksesi tarvittavat osat.` : 'Rakenna Ilmalaivatelakka{k:dock} ja johda osat sinne kuljettimilla.'}</p>`;
   } else {
     const p = PATENTS[S.level];
     h += `<div class="pat-no">Patentti ${S.level + 1} / ${PATENTS.length}</div><p class="pat-name">${p.n}</p><p class="pat-desc">${p.d}</p>`;
@@ -2680,8 +2694,8 @@ function renderGoal() {
     h += `<div class="rate">Palkkio: ${Object.keys(c.rew).map(k => `${c.rew[k]} ${ITEMS[k].n.toLowerCase()}`).join(', ')}. Tilatut tavarat menevät tilaukselle, eivät varastoon.</div>`;
   }
   if (S.storm && S.storm.end > S.time) h += `<div class="hint" style="border-color:#5fa8c9;background:rgba(95,168,201,.1)"><b>Myrsky</b> · ${fmtTime(S.storm.end - S.time)}. Kattilat tuottavat 25 % vähemmän höyryä.</div>`;
-  const hn = S.tut != null && S.tut < TUT.length ? null : hint(); if (hn) h += `<div class="hint">${hn}</div>`;
-  setHTML($('goalBody'), h);
+  const hn = S.tut != null && S.tut < TUT.length ? null : hint() && fillKeys(hint()); if (hn) h += `<div class="hint">${hn}</div>`;
+  setHTML($('goalBody'), fillKeys(h));
 }
 function doSurvey() {
   const i = SURVEY.findIndex(sv => sv.r > regionR()); if (i < 0) return;
@@ -2774,7 +2788,7 @@ function renderInfo() {
       h += Object.keys(b.inv).map(k => `<div class="irow">${icon(k)}<span class="n">${ITEMS[k].n}</span><span class="c">${b.inv[k]}</span></div>`).join('');
       h += '<p class="pat-desc">Kiertää kaikki rahtimastot kirjainjärjestyksessä. Lastausmastolla odottaa, kunnes lasti on täynnä tai mastolla ei ole tavaraa neljään sekuntiin.</p>';
       h += `<div class="acts"><button class="sbtn" data-a="delZep">Pura ilmalaiva</button></div>`;
-      setHTML($('info'), h); return;
+      setHTML($('info'), fillKeys(h)); return;
     }
     case 'mast': {
       h += `<div class="acts" style="margin-top:0"><button class="sbtn${b.mode === 'load' ? ' on' : ''}" data-a="mode" data-v="load">Lastaus</button><button class="sbtn${b.mode === 'unload' ? ' on' : ''}" data-a="mode" data-v="unload">Purku</button></div>`;
@@ -2823,7 +2837,7 @@ function renderInfo() {
       const ks = Object.keys(b.inv);
       h += ks.map(k => `<div class="irow">${icon(k)}<span class="n">${ITEMS[k].n}</span><span class="c">${b.inv[k]}</span></div>`).join('');
       const all = blist.filter(x => x.t === 'station').sort((a, c) => a.sid - c.sid);
-      h += '<h3>Aikataulu</h3>' + (all.length ? all.map(st => `<label class="kv"><span>${stationName(st.sid)} · ${st.mode === 'load' ? 'lastaus' : 'purku'}</span><button class="sbtn" data-a="sch" data-v="${st.sid}">${!b.sched || b.sched.includes(st.sid) ? 'Mukana' : 'Ohitetaan'}</button></label>`).join('') : '<div class="empty">Ei asemia. Rakenna Asema (Y) radan varrelle.</div>');
+      h += '<h3>Aikataulu</h3>' + (all.length ? all.map(st => `<label class="kv"><span>${stationName(st.sid)} · ${st.mode === 'load' ? 'lastaus' : 'purku'}</span><button class="sbtn" data-a="sch" data-v="${st.sid}">${!b.sched || b.sched.includes(st.sid) ? 'Mukana' : 'Ohitetaan'}</button></label>`).join('') : '<div class="empty">Ei asemia. Rakenna Asema{k:station} radan varrelle.</div>');
       break;
     }
     case 'splitter': {
@@ -2844,7 +2858,7 @@ function renderInfo() {
   }
   if (UPGRADABLE[b.t]) h += upgradeHTML(b);
   if (b.t !== 'hq') h += `<div class="acts">${b.t === 'train' || b.t === 'rail' || b.t === 'pipe' || b.t === 'tunnel' ? '' : '<button class="sbtn" data-a="rot">Käännä (R)</button>'}<button class="sbtn" data-a="del">Pura</button></div>`;
-  setHTML($('info'), h);
+  setHTML($('info'), fillKeys(h));
 }
 
 // Delegated actions (pointerdown so panel refreshes can't swallow clicks; click for keyboard)
@@ -3255,12 +3269,19 @@ window.addEventListener('keydown', e => {
   else if (k === ' ') setSpeed(speed ? 0 : (lastSpeed || 1));
   else if (k === 'm') $('mini').hidden = !$('mini').hidden;
   else if (k === 'n') { S.noNight = !S.noNight; toast(S.noNight ? 'Vuorokausirytmi pois: ikuinen päivä' : 'Vuorokausirytmi käytössä'); }
-  else if (k === 'x') selectTool('remove');
+  else if (k === 'delete' || k === 'backspace') { e.preventDefault(); selectTool('remove'); }
   else if (k === 'h') $('help').hidden = false;
   else if (k === 'i') toggleStats();
-  else if (k === 'c') selectTool('copy');
-  else if (k === 'b' || (k === 'v' && (e.ctrlKey || e.metaKey))) { if (S.clip) { tool = null; selectTool('paste'); } }
-  else { const t = TOOL_ORDER.find(t => BUILD[t].key.toLowerCase() === k); if (t) selectTool(t); }
+  else if (k === 'c' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); selectTool('copy'); }
+  else if ((k === 'v' || k === 'b') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); if (S.clip) { tool = null; selectTool('paste'); } }
+  else if (!e.ctrlKey && !e.metaKey && !e.altKey && CATS.some(c => c.key.toLowerCase() === k)) {
+    const c = CATS.find(c => c.key.toLowerCase() === k);
+    if (visTools(c).length) { curCat = c.id; if (tool && BUILD[tool] && !c.tools.includes(tool)) { tool = null; cv.style.cursor = 'default'; } renderTools(); }
+  }
+  else if (/^[0-9]$/.test(k) && !e.ctrlKey && !e.metaKey) {
+    const c = CATS.find(c => c.id === curCat) || CATS[0], list = visTools(c), n = k === '0' ? 9 : +k - 1;
+    if (list[n]) selectTool(list[n]);
+  }
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
 });
 window.addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
@@ -3280,7 +3301,7 @@ function restore(str) {
   cam.x = o.cam.x; cam.y = o.cam.y; cam.z = o.cam.z;
   netsDirty = true; stats = new Map(); deliv = []; hist = []; indexGhosts();
   if (S.tut == null) S.tut = S.level > 0 || blist.length > 6 ? 99 : 0;
-  if (o.v === 1) { give('putki', 80); setTimeout(() => toast('Päivitys: höyry kulkee nyt putkissa. Sait 80 putkea – yhdistä koneet kattiloihin Höyryputkella (2).'), 600); }
+  if (o.v === 1) { give('putki', 80); setTimeout(() => toast('Päivitys: höyry kulkee nyt putkissa. Sait 80 putkea – yhdistä koneet kattiloihin Höyryputkella.'), 600); }
 }
 function save() { try { localStorage.setItem(SAVE_KEY, serialize()); return true; } catch (e) { return false; } }
 function newGame() {
@@ -3541,6 +3562,7 @@ function start(data) {
   if (innerWidth < 760) for (const el of document.querySelectorAll('#invP,#goalP')) { el.classList.add('closed'); el.querySelector('.collapse').textContent = '+'; }
   renderTools(); renderInv(); renderGoal();
   $('muteBtn').textContent = muted ? 'Ääni pois' : 'Ääni päällä';
+  $('ver').textContent = 'v' + VERSION; $('verHelp').textContent = 'v' + VERSION;
   requestAnimationFrame(t => { lastT = t; loop(t); });
 }
 window.claude?.hot?.snapshot?.(() => ({ save: serialize() }));
