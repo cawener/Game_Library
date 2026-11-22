@@ -282,12 +282,39 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 .slot span { color: var(--muted); }
 .sbtn.on { border-color: var(--brass-light); background: #4a3922; color: var(--brass-light); }
 
+#topBtns { display: contents; }
+#menuBtn, #mtabs { display: none; }
 @media (max-width: 760px) {
-  #mini { display: none; }
+  /* phone: compact one-row top bar, menu buttons in a drop-down, side panels as pull-down drawers behind tabs */
+  #top { gap: 8px; flex-wrap: nowrap; padding-top: calc(env(safe-area-inset-top, 0px) + 4px); padding-bottom: 4px; }
+  #logo, .ver, .steam, #clock { display: none; }
+  .brand { font-size: 15px; letter-spacing: .08em; white-space: nowrap; }
+  #gauge { width: 38px; height: 38px; }
+  .seg button { padding: 5px 7px; font-size: 12px; }
+  #alertBtn { padding: 5px 8px; font-size: 12px; max-width: 34vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #menuBtn { display: block; padding: 4px 12px; font-size: 18px; line-height: 1.2; }
+  #topBtns { display: none; position: absolute; right: max(8px, env(safe-area-inset-right, 0px)); top: calc(100% + 8px); flex-direction: column; gap: 6px; padding: 10px; background: var(--panel); border: 1px solid var(--brass-dark); border-radius: 6px; box-shadow: 0 10px 24px rgba(0,0,0,.6); min-width: 180px; z-index: 20; }
+  #top.menuOpen #topBtns { display: flex; }
+  #topBtns .tbtn { width: 100%; text-align: left; padding: 9px 12px; font-size: 15px; }
+  #mtabs { display: flex; gap: 6px; position: fixed; z-index: 7; left: max(8px, env(safe-area-inset-left, 0px)); top: calc(var(--topH, 52px) + 6px); }
+  #mtabs button { background: linear-gradient(#3a2c20, #221913); border: 1px solid var(--brass-dark); border-top: none; border-radius: 0 0 6px 6px; padding: 5px 12px 6px; font-family: var(--display); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--parchment); box-shadow: 0 3px 8px rgba(0,0,0,.45); }
+  #mtabs button.on { color: var(--brass-light); border-color: var(--brass); background: linear-gradient(#4a3822, #2e2216); }
+  #invP, #goalP, #mini { left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); width: auto; top: calc(var(--topH, 52px) + 40px); max-height: calc(100% - var(--topH, 52px) - 210px); font-size: 14px;
+    opacity: 0; transform: translateY(-12px); pointer-events: none; transition: opacity .18s, transform .18s; z-index: 8; }
+  #invP.open, #goalP.open, #mini.open { opacity: 1; transform: none; pointer-events: auto; }
+  #mini { width: min(80vw, calc(100vh - var(--topH, 52px) - 230px)); right: auto; }
+  .panel .collapse { display: none; }
+  .panel.closed .pbody { display: block; }
   .panel h2 { font-size: 12px; letter-spacing: .05em; padding: 8px 10px 7px 12px; }
-  #invP, #goalP { width: calc(50% - 15px); font-size: 13px; top: calc(var(--topH, 64px) + 10px); max-height: 38%; }
   #info { width: calc(100% - 20px); bottom: 100px; max-height: 40%; }
-  .brand { font-size: 16px; }
+  #toast { top: calc(var(--topH, 52px) + 44px); width: calc(100% - 24px); }
+  #toast div { font-size: 13px; padding: 6px 10px; text-align: center; }
+  #tools { padding: 4px 6px 6px; max-width: calc(100% - 12px); }
+  #tools .tabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+  #tools .tabs button { white-space: nowrap; font-size: 10px; padding: 3px 7px 5px; letter-spacing: .06em; }
+  .tool { width: 56px; height: 66px; padding-top: 13px; font-size: 9.5px; }
+  .tool img { width: 28px; height: 28px; }
+  .tool .big-ch { font-size: 24px; line-height: 28px; height: 28px; }
 }
 @media (prefers-reduced-motion: reduce) { #toast div { animation-duration: .01s; animation-fill-mode: forwards; opacity: 1; } }
 </style>
@@ -303,18 +330,26 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
   <div class="steam"><span class="lbl">Paine</span><b id="presTxt">–</b></div>
   <div class="spacer"></div>
   <button class="tbtn" id="alertBtn" data-a="alert" hidden>Hälytykset 0</button>
-  <button class="tbtn" data-a="log" title="Viestiloki (O)">Loki</button>
   <div class="seg" role="group" aria-label="Pelinopeus">
     <button data-a="spd" data-v="0" title="Tauko (välilyönti)">Tauko</button><button data-a="spd" data-v="1" class="on">1×</button><button data-a="spd" data-v="2">2×</button><button data-a="spd" data-v="4">4×</button>
   </div>
   <span id="clock">0:00</span>
-  <button class="tbtn" data-a="mute" id="muteBtn">Ääni päällä</button>
-  <button class="tbtn" data-a="book">Tuotekirja</button>
-  <button class="tbtn" data-a="stats">Tilastot</button>
-  <button class="tbtn" id="bHelp">Ohjeet</button>
-  <button class="tbtn" id="bSave">Tallenna</button>
-  <button class="tbtn" data-a="menu">Valikko</button>
+  <button class="tbtn" id="menuBtn" data-a="topMenu" aria-label="Avaa valikko" aria-expanded="false">&#9776;</button>
+  <div id="topBtns">
+    <button class="tbtn" data-a="log" title="Viestiloki (O)">Loki</button>
+    <button class="tbtn" data-a="mute" id="muteBtn">Ääni päällä</button>
+    <button class="tbtn" data-a="book">Tuotekirja</button>
+    <button class="tbtn" data-a="stats">Tilastot</button>
+    <button class="tbtn" id="bHelp">Ohjeet</button>
+    <button class="tbtn" id="bSave">Tallenna</button>
+    <button class="tbtn" data-a="menu">Valikko</button>
+  </div>
 </header>
+<nav id="mtabs" aria-label="Paneelit">
+  <button data-a="mtab" data-v="invP">Varasto</button>
+  <button data-a="mtab" data-v="goalP">Patentit</button>
+  <button data-a="mtab" data-v="mini">Kartta</button>
+</nav>
 
 <aside id="mini" class="panel" aria-label="Minikartta"><canvas id="miniC" width="256" height="256"></canvas></aside>
 
@@ -477,7 +512,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.21';
+const VERSION = '0.22';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -3340,7 +3375,10 @@ function renderInfo() {
 }
 
 // Delegated actions (pointerdown so panel refreshes can't swallow clicks; click for keyboard)
+function closeTopMenu() { $('top').classList.remove('menuOpen'); $('menuBtn').setAttribute('aria-expanded', 'false'); }
+function closeDrawers() { for (const b2 of document.querySelectorAll('#mtabs button')) { b2.classList.remove('on'); $(b2.dataset.v).classList.remove('open'); } }
 function doAction(el) {
+  if (el.closest('#topBtns') && el.dataset.a !== 'mute') closeTopMenu();
   const a = el.dataset.a, b = selected;
   switch (a) {
     case 'fold': el.closest('.panel').classList.toggle('closed'); el.textContent = el.closest('.panel').classList.contains('closed') ? '+' : '–'; return;
@@ -3382,7 +3420,14 @@ function doAction(el) {
       sc = sc.includes(sid) ? sc.filter(x => x !== sid) : sc.concat(sid);
       b.sched = sc.length === all.length ? null : sc;
     } break;
-    case 'stats': toggleStats(); return;
+    case 'stats': toggleStats(); closeTopMenu(); return;
+    case 'topMenu': { const open = !$('top').classList.contains('menuOpen'); $('top').classList.toggle('menuOpen', open); $('menuBtn').setAttribute('aria-expanded', open); return; }
+    case 'mtab': {
+      const id = el.dataset.v, open = !$(id).classList.contains('open');
+      for (const b2 of document.querySelectorAll('#mtabs button')) { const on = b2.dataset.v === id && open; b2.classList.toggle('on', on); $(b2.dataset.v).classList.toggle('open', on); }
+      if (id === 'mini' && open) { miniBase = null; requestAnimationFrame(drawMini); }
+      closeTopMenu(); return;
+    }
     case 'book': toggleBook(); return;
     case 'calcSet': toggleBook(el.dataset.v); return;
     case 'log': $('logM').hidden = !$('logM').hidden; if (!$('logM').hidden) renderLog(); return;
@@ -3426,8 +3471,8 @@ document.addEventListener('click', e => {
   if (e.detail !== 0) return;
   const el = e.target.closest('[data-a]'); if (el && !el.disabled) doAction(el);
 });
-$('bHelp').onclick = () => { $('help').hidden = false; };
-$('bSave').onclick = () => { if (save()) toast('Peli tallennettu'); else toast('Tallennus ei onnistunut tässä selaimessa'); };
+$('bHelp').onclick = () => { $('help').hidden = false; closeTopMenu(); };
+$('bSave').onclick = () => { closeTopMenu(); if (save()) toast('Peli tallennettu'); else toast('Tallennus ei onnistunut tässä selaimessa'); };
 
 
 // ---- statistics view
@@ -3718,7 +3763,7 @@ function clickTile(t, mods) {
 
 cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('pointerdown', e => {
-  commitGrp();
+  commitGrp(); closeTopMenu(); if (innerWidth <= 760) closeDrawers();
   cv.setPointerCapture(e.pointerId);
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   $('tip').hidden = true;
@@ -4182,7 +4227,7 @@ function start(data) {
   if (src) { try { restore(src); loaded = true; } catch (e) { loaded = false; } }
   if (!loaded) { newGame(); $('help').hidden = false; }
   if (S.diffPending) $('help').hidden = false;
-  if (innerWidth < 760) for (const el of document.querySelectorAll('#invP,#goalP')) { el.classList.add('closed'); el.querySelector('.collapse').textContent = '+'; }
+
   renderTools(); renderInv(); renderGoal();
   $('muteBtn').textContent = muted ? 'Ääni pois' : 'Ääni päällä';
   $('verHelp').textContent = 'v' + VERSION; syncHelp();
