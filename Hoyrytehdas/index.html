@@ -243,6 +243,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 .seg button:last-child { border-right: none; }
 .seg button.on { background: #4a3922; color: var(--brass-light); }
 #alertBtn { border-color: var(--bad); color: #f3b199; }
+.lblIcon { display: none; }
 .filt { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin: 6px 0; }
 .filt button { background: #2a2018; border: 1px solid var(--brass-dark); border-radius: 4px; padding: 3px; display: flex; justify-content: center; }
 .filt button.on { border-color: var(--brass-light); background: #4a3922; }
@@ -308,8 +309,13 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
   #topBtns .menuVer { display: block; text-align: center; font-size: 12px; letter-spacing: .06em; color: var(--brass-light); opacity: .75; padding: 4px 0 0; border-top: 1px solid var(--brass-dark); margin-top: 2px; }
   .brand { font-size: 15px; letter-spacing: .08em; white-space: nowrap; }
   #gauge { width: 38px; height: 38px; }
+  @media (max-width: 400px) { .brand { font-size: 13px; letter-spacing: .04em; } #top { gap: 6px; } .seg button { padding: 5px 6px; } }
   .seg button { padding: 5px 7px; font-size: 12px; }
-  #alertBtn { padding: 5px 8px; font-size: 12px; max-width: 34vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #alertBtn { padding: 5px 8px; font-size: 13px; white-space: nowrap; flex-shrink: 0; }
+  .lblFull { display: none; } .lblIcon { display: inline; }
+  .seg, #menuBtn, #gauge { flex-shrink: 0; }
+  .brand { min-width: 0; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; }
+  .spacer { flex: 1 1 0; min-width: 0; }
   #menuBtn { display: block; padding: 4px 12px; font-size: 18px; line-height: 1.2; }
   #topBtns { display: none; position: absolute; right: max(8px, env(safe-area-inset-right, 0px)); top: calc(100% + 8px); flex-direction: column; gap: 6px; padding: 10px; background: var(--panel); border: 1px solid var(--brass-dark); border-radius: 6px; box-shadow: 0 10px 24px rgba(0,0,0,.6); min-width: 180px; z-index: 20; }
   #top.menuOpen #topBtns { display: flex; }
@@ -353,7 +359,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
   <div class="spacer"></div>
   <button class="tbtn" id="alertBtn" data-a="alert" hidden>Hälytykset 0</button>
   <div class="seg" role="group" aria-label="Pelinopeus">
-    <button data-a="spd" data-v="0" title="Tauko (välilyönti)">Tauko</button><button data-a="spd" data-v="1" class="on">1×</button><button data-a="spd" data-v="2">2×</button><button data-a="spd" data-v="4">4×</button>
+    <button data-a="spd" data-v="0" title="Tauko (välilyönti)" aria-label="Tauko"><span class="lblFull">Tauko</span><span class="lblIcon" aria-hidden="true">&#10073;&#10073;</span></button><button data-a="spd" data-v="1" class="on">1×</button><button data-a="spd" data-v="2">2×</button><button data-a="spd" data-v="4">4×</button>
   </div>
   <span id="clock">0:00</span>
   <button class="tbtn" id="menuBtn" data-a="topMenu" aria-label="Avaa valikko" aria-expanded="false">&#9776;</button>
@@ -562,7 +568,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.27';
+const VERSION = '0.28';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -4101,7 +4107,7 @@ function renderAlerts() {
   const n = problems().length, el = $('alertBtn');
   if (n > lastAlertN && performance.now() - (renderAlerts.t || 0) > 10000) { sfx('alert'); renderAlerts.t = performance.now(); }
   lastAlertN = n;
-  el.hidden = n === 0; el.textContent = `Hälytykset ${n}`;
+  el.hidden = n === 0; const ah = `<span class="lblFull">Hälytykset </span><span class="lblIcon" aria-hidden="true">&#9888; </span>${n}`; if (el._h !== ah) { el.innerHTML = ah; el._h = ah; } el.setAttribute('aria-label', `Hälytykset ${n}`);
   el.title = 'Näytä seuraava kone, jolta puuttuu höyry tai polttoaine, tai veturi ilman reittiä';
 }
 function jumpAlert() {
