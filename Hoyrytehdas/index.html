@@ -527,7 +527,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.25';
+const VERSION = '0.26';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -3725,7 +3725,7 @@ let pinch = null;
 // --- Touch build: 1) tap a place, 2) tap an arrow to choose the direction (or the ghost to build as shown)
 let lastPT = 'mouse', tp = null;
 const NODIR = new Set(['pipe', 'oilpipe', 'lamp', 'mast', 'zep', 'tank', 'rail']), LINE = new Set(['belt', 'fastbelt', 'pipe', 'oilpipe', 'rail']);
-const touchBuildTool = () => tool && !['remove', 'copy', 'upgrade', 'paste'].includes(tool);
+const touchBuildTool = () => tool && !LINE.has(tool) && !['remove', 'copy', 'upgrade', 'paste'].includes(tool);
 const tpSize = () => (BUILD[tool] && BUILD[tool].size) || 1;
 function touchPlace(d) {
   rot = d; const w = tpSize(), ok = placeTool(tp.x, tp.y, d); commitGrp();
