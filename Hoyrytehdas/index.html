@@ -199,6 +199,11 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 .closex { background: none; border: none; color: var(--muted); font-size: 20px; line-height: 1; padding: 0 2px; }
 
 #toast { position: fixed; top: calc(var(--topH, 64px) + 10px); left: 50%; transform: translateX(-50%); z-index: 30; display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; }
+#bhint { position: fixed; z-index: 9; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 14px; background: rgba(20,15,11,.95); border: 1px solid var(--brass); border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.55); max-width: calc(100% - 20px); }
+#bhint[hidden] { display: none; }
+#bhint b { font-family: var(--display); font-size: 14px; letter-spacing: .06em; color: var(--brass-light); white-space: nowrap; }
+#bhint small { display: block; font-size: 12px; color: var(--parchment); opacity: .8; }
+#bhint button { min-width: 40px; height: 36px; font-size: 18px; padding: 0 8px; }
 #toast div { background: rgba(20,15,11,.95); border: 1px solid var(--brass); border-radius: 4px; padding: 7px 14px; font-size: 14px; animation: fade 3.2s forwards; }
 @keyframes fade { 0%{opacity:0;transform:translateY(-6px)} 8%{opacity:1;transform:none} 80%{opacity:1} 100%{opacity:0} }
 
@@ -283,7 +288,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 .sbtn.on { border-color: var(--brass-light); background: #4a3922; color: var(--brass-light); }
 
 #topBtns { display: contents; }
-#menuBtn, #mtabs { display: none; }
+#menuBtn, #mtabs, #tutP { display: none; }
 @media (max-width: 760px) {
   /* phone: compact one-row top bar, menu buttons in a drop-down, side panels as pull-down drawers behind tabs */
   #top { gap: 8px; flex-wrap: nowrap; padding-top: calc(env(safe-area-inset-top, 0px) + 4px); padding-bottom: 4px; }
@@ -295,13 +300,16 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
   #menuBtn { display: block; padding: 4px 12px; font-size: 18px; line-height: 1.2; }
   #topBtns { display: none; position: absolute; right: max(8px, env(safe-area-inset-right, 0px)); top: calc(100% + 8px); flex-direction: column; gap: 6px; padding: 10px; background: var(--panel); border: 1px solid var(--brass-dark); border-radius: 6px; box-shadow: 0 10px 24px rgba(0,0,0,.6); min-width: 180px; z-index: 20; }
   #top.menuOpen #topBtns { display: flex; }
+  #top.menuOpen { z-index: 30; }
   #topBtns .tbtn { width: 100%; text-align: left; padding: 9px 12px; font-size: 15px; }
   #mtabs { display: flex; gap: 6px; position: fixed; z-index: 7; left: max(8px, env(safe-area-inset-left, 0px)); top: calc(var(--topH, 52px) + 6px); }
   #mtabs button { background: linear-gradient(#3a2c20, #221913); border: 1px solid var(--brass-dark); border-top: none; border-radius: 0 0 6px 6px; padding: 5px 12px 6px; font-family: var(--display); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--parchment); box-shadow: 0 3px 8px rgba(0,0,0,.45); }
   #mtabs button.on { color: var(--brass-light); border-color: var(--brass); background: linear-gradient(#4a3822, #2e2216); }
-  #invP, #goalP, #mini { left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); width: auto; top: calc(var(--topH, 52px) + 40px); max-height: calc(100% - var(--topH, 52px) - 210px); font-size: 14px;
+  #tutP { display: block; }
+  #tutP .tut { margin: 0; }
+  #invP, #goalP, #mini, #tutP { left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); width: auto; top: calc(var(--topH, 52px) + 40px); max-height: calc(100% - var(--topH, 52px) - 210px); font-size: 14px;
     opacity: 0; transform: translateY(-12px); pointer-events: none; transition: opacity .18s, transform .18s; z-index: 8; }
-  #invP.open, #goalP.open, #mini.open { opacity: 1; transform: none; pointer-events: auto; }
+  #invP.open, #goalP.open, #mini.open, #tutP.open { opacity: 1; transform: none; pointer-events: auto; }
   #mini { width: min(80vw, calc(100vh - var(--topH, 52px) - 230px)); right: auto; }
   .panel .collapse { display: none; }
   .panel.closed .pbody { display: block; }
@@ -346,6 +354,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
   </div>
 </header>
 <nav id="mtabs" aria-label="Paneelit">
+  <button data-a="mtab" data-v="tutP" id="tutTab" hidden>Opastus</button>
   <button data-a="mtab" data-v="invP">Varasto</button>
   <button data-a="mtab" data-v="goalP">Patentit</button>
   <button data-a="mtab" data-v="mini">Kartta</button>
@@ -362,6 +371,11 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
   </div>
 </aside>
 
+<aside id="tutP" class="panel" aria-label="Opastus">
+  <h2>Opastus</h2>
+  <div class="pbody" id="tutBody"></div>
+</aside>
+
 <aside id="goalP" class="panel">
   <h2>Patenttivirasto <button class="collapse" data-a="fold" aria-label="Pienennä">–</button></h2>
   <div class="pbody" id="goalBody"></div>
@@ -373,6 +387,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 <div id="mtip" hidden></div>
 <div id="ovl" hidden></div>
 <div id="toast"></div>
+<div id="bhint" hidden></div>
 
 <div id="help" class="modal" hidden>
   <div class="panel">
@@ -512,7 +527,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.22';
+const VERSION = '0.25';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -2761,6 +2776,7 @@ function render(fdt) {
   }
 
   // ghost / hover
+  if (lastPT === 'touch' && touchBuildTool()) hover = tp;
   if (hover && inB(hover.x, hover.y)) {
     if (tool === 'copy' || tool === 'upgrade') {
       g.strokeStyle = tool === 'upgrade' ? '#8fbf6a' : '#8cc4ec'; g.lineWidth = .05; g.strokeRect(hover.x, hover.y, 1, 1);
@@ -2794,6 +2810,12 @@ function render(fdt) {
         if (tool === 'tunnel') { g.globalAlpha = .6; tunnelArch(gb); g.globalAlpha = 1; }
         if (err && !underOk) { g.fillStyle = 'rgba(224,98,60,.35)'; g.fillRect(hover.x, hover.y, gb.w || 1, gb.h || 1); }
       } else { g.save(); g.translate(hover.x + .5, hover.y + .5); g.globalAlpha = .8; arrow(rot); g.restore(); }
+      if (tp && hover === tp && !NODIR.has(tool)) { const w = gb.w || 1, cx = tp.x + w / 2, cy = tp.y + w / 2, pulse = .5 + .5 * Math.sin(t * 4);
+        g.strokeStyle = `rgba(234,208,138,${.5 + .4 * pulse})`; g.lineWidth = .06; g.strokeRect(tp.x - .04, tp.y - .04, w + .08, w + .08);
+        for (let d = 0; d < 4; d++) { const ax = cx + DX[d] * (w / 2 + .62), ay = cy + DY[d] * (w / 2 + .62);
+          circle(ax, ay, .4); g.fillStyle = d === rot ? 'rgba(201,154,63,.95)' : 'rgba(30,22,16,.85)'; g.fill(); g.strokeStyle = P.brassL; g.lineWidth = .04; g.stroke();
+          g.save(); g.translate(ax - DX[d] * .43, ay - DY[d] * .43); g.translate(DX[d] * .43, DY[d] * .43); g.scale(1.3, 1.3); g.translate(-DX[d] * .33, -DY[d] * .33); arrow(d, d === rot ? '#2a1d12' : P.brassL); g.restore(); } }
+      else if (tp && hover === tp) { const w = gb.w || 1; g.strokeStyle = 'rgba(234,208,138,.8)'; g.lineWidth = .06; g.strokeRect(tp.x - .04, tp.y - .04, w + .08, w + .08); }
       if ((gb.t === 'drill' || gb.t === 'drill2') && S.diff && S.diff !== 'sandbox') { const R = BUILD[gb.t].reach; g.strokeStyle = 'rgba(234,208,138,.55)'; g.lineWidth = .05; g.setLineDash([.15, .1]); g.strokeRect(hover.x - R + .05, hover.y - R + .05, 2 * R + .9, 2 * R + .9); g.setLineDash([]); }
       if (gb.t === 'lumber') { const R = BUILD.lumber.radius; g.strokeStyle = 'rgba(140,200,110,.6)'; g.lineWidth = .05; g.setLineDash([.15, .1]); circle(hover.x + .5, hover.y + .5, R + .5); g.stroke(); g.setLineDash([]); }
       if (isBoiler(gb)) { // highlight water neighbours
@@ -3072,9 +3094,9 @@ $('tools').addEventListener('click', e => { const b = e.target.closest('[data-to
 function selectTool(k) {
   if (k && BUILD[k] && !unlocked(k)) return;
   if (k === 'paste' && !S.clip) return;
-  tool = tool === k ? null : k;
+  tool = tool === k ? null : k; tp = null;
   cv.style.cursor = tool ? 'crosshair' : 'default';
-  renderTools();
+  renderTools(); renderBHint();
 }
 
 function renderInv() {
@@ -3174,9 +3196,13 @@ function renderGoal() {
     h += `<div class="cmode" role="group" aria-label="Toimitusten jako">${[['half', 'Puolet'], ['all', 'Kaikki'], ['off', 'Tauolla']].map(([v, l]) => `<button class="sbtn${md === v ? ' on' : ''}" data-a="cmode" data-v="${v}">${l}</button>`).join('')}</div>`;
     h += `<div class="rate">${md === 'half' ? `Joka toinen ${ITEMS[c.i].n.toLowerCase()} menee tilaukselle, loput varastoon.` : md === 'all' ? `Kaikki toimitettu ${ITEMS[c.i].n.toLowerCase()} menee tilaukselle, eikä varasto kasva.` : 'Tilaus ei ota toimituksia. Aika kuluu silti.'}</div></div>`;
   }
-  if (S.tut != null && S.tut < TUT.length) {
-    h += `<div class="tut"><div class="pat-no">Opastus ${S.tut + 1} / ${TUT.length}</div><p>${fillKeys(TUT[S.tut].t)}</p><button class="sbtn" data-a="tutSkip">Ohita opastus</button></div>`;
-  }
+  const tutOn = S.tut != null && S.tut < TUT.length, phone = innerWidth <= 760;
+  const tutH = tutOn ? `<div class="tut"><div class="pat-no">Opastus ${S.tut + 1} / ${TUT.length}</div><p>${fillKeys(TUT[S.tut].t)}</p><button class="sbtn" data-a="tutSkip">Ohita opastus</button></div>` : '';
+  // on phones the tutorial has its own tab and drawer while it is active
+  const tab = $('tutTab'); tab.hidden = !tutOn; tab.textContent = tutOn ? `Opastus ${S.tut + 1}/${TUT.length}` : 'Opastus';
+  setHTML($('tutBody'), phone ? tutH : '');
+  if (!tutOn && $('tutP').classList.contains('open')) { $('tutP').classList.remove('open'); tab.classList.remove('on'); }
+  if (!phone) h += tutH;
   if (S.level >= PATENTS.length) {
     const dk = blist.find(b => b.t === 'dock');
     h = S.ships ? `<p class="pat-name">Aurora on ilmassa</p><p class="pat-desc">Laivastossa ${S.ships} ilmalaivaa. Telakka voi rakentaa lisää.</p>`
@@ -3384,7 +3410,8 @@ function doAction(el) {
     case 'fold': el.closest('.panel').classList.toggle('closed'); el.textContent = el.closest('.panel').classList.contains('closed') ? '+' : '–'; return;
     case 'close': closeInfo(); return;
     case 'closeHelp': $('help').hidden = true; paused = false; return;
-    case 'pickDiff': S.diff = el.dataset.v; delete S.diffPending; $('help').hidden = true; syncHelp(); toast(`Vaikeustaso: ${DIFF[S.diff].n}. ${DIFF[S.diff].d}`); save(); return;
+    case 'pickDiff': S.diff = el.dataset.v; delete S.diffPending; $('help').hidden = true; syncHelp(); renderGoal();
+      if (innerWidth <= 760 && S.tut === 0) { $('tutP').classList.add('open'); $('tutTab').classList.add('on'); } toast(`Vaikeustaso: ${DIFF[S.diff].n}. ${DIFF[S.diff].d}`); save(); return;
     case 'closeWin': $('win').hidden = true; return;
     case 'newYes': $('newg').hidden = true; newGame(); $('help').hidden = false; return;
     case 'newNo': $('newg').hidden = true; return;
@@ -3413,6 +3440,8 @@ function doAction(el) {
     case 'slotLoad': try { const str = localStorage.getItem(slotKey(el.dataset.v)); if (!str) return; restore(str); $('newg').hidden = true; closeInfo(); renderTools(); renderInv(); renderGoal(); save(); toast(`Ladattu paikasta ${el.dataset.v}`); } catch (err) { toast('Tallennusta ei voitu ladata'); } return;
     case 'tutAgain': S.tut = 0; $('newg').hidden = true; renderGoal(); toast('Opastus alkaa alusta'); return;
     case 'alert': jumpAlert(); return;
+    case 'tpOk': if (tp) touchPlace(rot); return;
+    case 'tpCancel': if (tp) { tp = null; renderBHint(); } else selectTool(null); return;
     case 'rotTool': rot = (rot + 1) % 4; if (selected && selected.t !== 'hq' && selected.t !== 'train') { selected.d = (selected.d + 1) % 4; } return;
     case 'sch': if (b) {
       const sid = +el.dataset.v, all = blist.filter(x => x.t === 'station').map(x => x.sid);
@@ -3421,9 +3450,10 @@ function doAction(el) {
       b.sched = sc.length === all.length ? null : sc;
     } break;
     case 'stats': toggleStats(); closeTopMenu(); return;
-    case 'topMenu': { const open = !$('top').classList.contains('menuOpen'); $('top').classList.toggle('menuOpen', open); $('menuBtn').setAttribute('aria-expanded', open); return; }
+    case 'topMenu': { const open = !$('top').classList.contains('menuOpen'); if (open) closeDrawers(); $('top').classList.toggle('menuOpen', open); $('menuBtn').setAttribute('aria-expanded', open); return; }
     case 'mtab': {
       const id = el.dataset.v, open = !$(id).classList.contains('open');
+      closeTopMenu();
       for (const b2 of document.querySelectorAll('#mtabs button')) { const on = b2.dataset.v === id && open; b2.classList.toggle('on', on); $(b2.dataset.v).classList.toggle('open', on); }
       if (id === 'mini' && open) { miniBase = null; requestAnimationFrame(drawMini); }
       closeTopMenu(); return;
@@ -3463,6 +3493,7 @@ function setRecipe(b, k) {
   const c = contents(b); for (const i in c) give(i, c[i]);
   b.rec = k; b.inv = {}; b.cur = false; b.prog = 0; b.outN = 0;
 }
+document.addEventListener('pointerdown', e => { lastPT = e.pointerType; }, true);
 document.addEventListener('pointerdown', e => {
   const el = e.target.closest('[data-a]'); if (!el || el.disabled || e.button !== 0) return;
   e.preventDefault(); doAction(el);
@@ -3691,6 +3722,37 @@ let drag = null;
 const pointers = new Map();
 let pinch = null;
 
+// --- Touch build: 1) tap a place, 2) tap an arrow to choose the direction (or the ghost to build as shown)
+let lastPT = 'mouse', tp = null;
+const NODIR = new Set(['pipe', 'oilpipe', 'lamp', 'mast', 'zep', 'tank', 'rail']), LINE = new Set(['belt', 'fastbelt', 'pipe', 'oilpipe', 'rail']);
+const touchBuildTool = () => tool && !['remove', 'copy', 'upgrade', 'paste'].includes(tool);
+const tpSize = () => (BUILD[tool] && BUILD[tool].size) || 1;
+function touchPlace(d) {
+  rot = d; const w = tpSize(), ok = placeTool(tp.x, tp.y, d); commitGrp();
+  if (ok && LINE.has(tool) && inB(tp.x + DX[d] * w, tp.y + DY[d] * w)) tp = { x: tp.x + DX[d] * w, y: tp.y + DY[d] * w };
+  else if (ok) tp = null;
+  renderBHint();
+}
+function touchTap(cx, cy) {
+  const r = cv.getBoundingClientRect(), wx = (cx - r.left - CW / 2) / cam.z + cam.x, wy = (cy - r.top - CH / 2) / cam.z + cam.y;
+  const t = { x: Math.floor(wx), y: Math.floor(wy) };
+  if (tp) {
+    const w = tpSize(), dx = wx - (tp.x + w / 2), dy = wy - (tp.y + w / 2);
+    if (Math.abs(dx) < w / 2 && Math.abs(dy) < w / 2) { touchPlace(rot); return; }
+    if (!NODIR.has(tool) && Math.max(Math.abs(dx), Math.abs(dy)) < w / 2 + 1.3) { touchPlace(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0)); return; }
+  }
+  if (!inB(t.x, t.y)) return;
+  const o = (tpSize() - 1) >> 1; tp = { x: t.x - o, y: t.y - o }; renderBHint();
+}
+function renderBHint() {
+  const el = $('bhint');
+  if (!(lastPT === 'touch' && touchBuildTool())) { tp = null; if (!el.hidden) el.hidden = true; return; }
+  const nm = BUILD[tool] ? BUILD[tool].n : '', nd = NODIR.has(tool);
+  const h = !tp ? `<div><b>Valitse paikka</b><small>${nm}: napauta karttaa · vedä siirtääksesi näkymää</small></div><button class="tbtn" data-a="tpCancel" aria-label="Peru">&#x2715;</button>`
+    : `<div><b>${nd ? 'Vahvista' : 'Valitse suunta'}</b><small>${nd ? 'Napauta haamua tai ✓ rakentaaksesi' : 'Napauta nuolta · haamu tai ✓ = nykyinen suunta'}</small></div>${nd ? '' : '<button class="tbtn" data-a="rotTool" aria-label="Käännä">&#x21bb;</button>'}<button class="tbtn" data-a="tpOk" aria-label="Rakenna">&#x2713;</button><button class="tbtn" data-a="tpCancel" aria-label="Peru">&#x2715;</button>`;
+  if (el._h !== h) { el.innerHTML = h; el._h = h; }
+  el.hidden = false;
+}
 function placeTool(x, y, d) {
   const ex = inB(x, y) ? grid[idx(x, y)] : null;
   if (ex && ((tool === 'rail' && isRail(ex)) || (tool === 'pipe' && (ex.t === 'pipe' || ex.pipe)))) return true;
@@ -3774,7 +3836,9 @@ cv.addEventListener('pointerdown', e => {
   }
   const t = tileAt(e.clientX, e.clientY);
   drag = { btn: e.button, sx: e.clientX, sy: e.clientY, moved: false, last: t, cx: cam.x, cy: cam.y, mode: null };
+  lastPT = e.pointerType;
   if (e.button === 1 || (e.button === 0 && !tool)) drag.mode = 'pan';
+  else if (e.button === 0 && e.pointerType === 'touch' && touchBuildTool()) { drag.mode = 'pan'; drag.tb = true; }
   else if ((e.button === 2 || tool === 'remove') && e.shiftKey) { drag.mode = 'rectRemove'; drag.a = t; drag.b = t; }
   else if (e.button === 2 || tool === 'remove') { drag.mode = 'remove'; removeAt(t.x, t.y); }
   else if (tool === 'copy') { drag.mode = 'rect'; drag.a = t; drag.b = t; }
@@ -3872,7 +3936,8 @@ cv.addEventListener('pointermove', e => {
 function endPointer(e) {
   pointers.delete(e.pointerId);
   if (pinch) { if (pointers.size < 2) pinch = null; drag = null; return; }
-  if (drag && drag.mode === 'pan' && !drag.moved && drag.btn === 0) clickTile(tileAt(e.clientX, e.clientY), { ctrl: e.ctrlKey || e.metaKey, shift: e.shiftKey });
+  if (drag && drag.tb && !drag.moved) touchTap(e.clientX, e.clientY);
+  else if (drag && drag.mode === 'pan' && !drag.moved && drag.btn === 0) clickTile(tileAt(e.clientX, e.clientY), { ctrl: e.ctrlKey || e.metaKey, shift: e.shiftKey });
   if (drag && drag.mode === 'rect') copyArea(drag.a, drag.b);
   if (drag && drag.mode === 'rectUp') upgradeArea(drag.a, drag.b);
   if (drag && drag.mode === 'rectRemove') {
