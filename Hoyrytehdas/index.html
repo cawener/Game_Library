@@ -397,6 +397,7 @@ const ITEMS = {
   sinkki:       { n: 'Sinkkiharkko',   c: '#cfd8dc', s: 'bar' },
   messinki:     { n: 'Messinki',       c: '#e2b845', s: 'plate' },
   voiteluoljy:  { n: 'Voiteluöljy',    c: '#6a4a24', s: 'can' },
+  puu:          { n: 'Puu',            c: '#8a5c32', s: 'log' },
   raakaoljy:    { n: 'Raakaöljy',      c: '#2a2032', s: 'drop', fluid: true },
 };
 const ORE_ITEM = [null, 'rautamalmi', 'kuparimalmi', 'hiili', 'kivi', 'sinkkimalmi', null];
@@ -441,9 +442,9 @@ const BUILD = {
                desc: 'Kaksi kertaa nopeampi kuljetin.' },
   drill2:    { n: 'Paineporakone', key: '0', lvl: 3, cost: { teras: 6, hammasratas: 6, venttiili: 2 }, use: 35, rate: 1.2,
                desc: 'Louhii 72/min. Kuluttaa 35 höyryä.' },
-  rail:      { n: 'Rautatie',      key: 'T', lvl: 3, cost: { teras: 1 },
+  rail:      { n: 'Rautatie',      key: 'T', lvl: 3, cost: { teras: 1, puu: 1 },
                desc: 'Raide junille. Vedä hiirellä. Raiteet yhdistyvät viereisiin raiteisiin ja asemiin.' },
-  station:   { n: 'Asema',         key: 'Y', lvl: 3, cost: { teras: 8, rautalevy: 10 },
+  station:   { n: 'Asema',         key: 'Y', lvl: 3, cost: { teras: 8, rautalevy: 6, puu: 10 },
                desc: 'Osa rataa. Lastausasema ottaa tavaroita kuljettimilta, purkuasema syöttää ne nuolen suuntaan.' },
   train:     { n: 'Höyryveturi',   key: 'V', lvl: 3, cost: { teras: 20, venttiili: 6, hammasratas: 10 }, cap: 200, speed: 4,
                desc: 'Asetetaan raiteelle. Kiertää asemia järjestyksessä: lastaa 200 tavaraa ja purkaa ne.' },
@@ -620,10 +621,32 @@ function genMap(seed) {
     if (Math.hypot(dx, dy) <= r + (hash(x, y + seed) - .5) * .8 && !terrain[i] && !ore[i] && Math.max(Math.abs(x - cx), Math.abs(y - cy)) > 3) ore[i] = 6; } };
   oblob(cx + 20, cy - 14, 1.8);
   for (let k = 0; k < 16; k++) { let x, y; do { x = 4 + R3() * (W - 8) | 0; y = 4 + R3() * (H - 8) | 0; } while (Math.hypot(x - cx, y - cy) < 22); oblob(x, y, 1.2 + R3() * 1.3); }
+  // Forests: own RNG, on empty land only; felled trees are removed again from the save
+  tree = new Uint8Array(W * H);
+  const R4 = rng(seed ^ 0x7ee5);
+  for (let k = 0; k < 34; k++) {
+    let bx, by; do { bx = 3 + R4() * (W - 6) | 0; by = 3 + R4() * (H - 6) | 0; } while (Math.hypot(bx - cx, by - cy) < 12);
+    const r = 2.5 + R4() * 5.5, p1 = R4() * 6.28;
+    for (let dy = -9; dy <= 9; dy++) for (let dx = -9; dx <= 9; dx++) {
+      const x = bx + dx, y = by + dy; if (!inB(x, y)) continue; const i = idx(x, y);
+      const a = Math.atan2(dy, dx); if (Math.hypot(dx, dy) > r * (1 + .25 * Math.sin(3 * a + p1))) continue;
+      if (terrain[i] || ore[i] || Math.max(Math.abs(x - cx), Math.abs(y - cy)) < 7) continue;
+      if (hash(x * 3 + seed % 101, y * 7) < .82) tree[i] = 1 + (hash(x + 17, y * 13 + seed % 53) * 5 | 0);
+    }
+  }
   computeLook(seed); tintC = null; chunks = new Map();
 }
 // Cosmetic per-tile data: soil tint (smooth noise) and water depth (distance to shore)
-let soil, depth, tintC = null, chunks = new Map();
+let soil, depth, tintC = null, chunks = new Map(), tree = new Uint8Array(W * H);
+function applyFelled() { for (const i of S.felled || []) tree[i] = 0; }
+function fellAt(x, y, amount) {
+  const i = idx(x, y); if (!tree[i]) return 0;
+  tree[i] = 0; (S.felled = S.felled || []).push(i);
+  chunks.delete(Math.floor(x / CHK) + ',' + Math.floor(y / CHK)); miniBase = null;
+  for (let k = 0; k < 6; k++) particles.push({ x: x + .5 + (Math.random() - .5) * .6, y: y + .3, vx: (Math.random() - .5) * 1.4, vy: -Math.random() * 1.2, life: 0, max: .9, r: .12, col: 'rgba(80,110,40,' });
+  if (amount) { give('puu', amount); stat('puu', amount, 'p'); }
+  return amount;
+}
 const CHK = 16, CPX = 16;
 function chunkAt(cx, cy) {
   const key = cx + ',' + cy; let c = chunks.get(key); if (c) return c;
@@ -637,6 +660,8 @@ function chunkAt(cx, cy) {
     x.drawImage(o ? ORES[o][(v * 4) | 0] : GROUND[(v * 6) | 0], xx, yy, 1.02, 1.02);
     if (!o) { const dv = hash(tx + 911, ty + 37); if (dv < .1) x.drawImage(DECO[(dv * 60) | 0], xx, yy, 1, 1); }
   }
+  x.imageSmoothingEnabled = true;
+  for (let yy = 0; yy < CHK; yy++) for (let xx = 0; xx < CHK; xx++) { const tx = cx * CHK + xx, ty = cy * CHK + yy; if (inB(tx, ty) && tree[idx(tx, ty)]) x.drawImage(TREES[tree[idx(tx, ty)] - 1], xx - .2, yy - .35, 1.4, 1.4); }
   x.imageSmoothingEnabled = true; x.drawImage(tintC, cx * CHK, cy * CHK, CHK, CHK, 0, 0, CHK, CHK);
   x.fillStyle = '#6a5a3c';
   for (let yy = 0; yy < CHK; yy++) for (let xx = 0; xx < CHK; xx++) {
@@ -714,7 +739,7 @@ const OIL_CAP = { oilpipe: 20, pumpjack: 40, refinery: 100, oilboiler: 40 };
 const oilCap = b => OIL_CAP[b.t] || 20;
 let oilNets = [];
 const onet = b => (b && b.onet != null ? oilNets[b.onet] : null);
-function boilerFuel(b) { return b.t === 'oilboiler' ? !!(onet(b) && onet(b).amt >= BUILD.oilboiler.oilUse) : b.fuel > 0; }
+function boilerFuel(b) { return b.t === 'oilboiler' ? !!(onet(b) && onet(b).amt >= BUILD.oilboiler.oilUse) : b.fuel > 0 || (b.wood || 0) > 0; }
 const isRail = b => b && (b.t === 'rail' || b.t === 'station' || b.t === 'signal');
 const conducts = b => b && b.t !== 'hq' && (isBoiler(b) || b.t === 'pipe' || !!b.pipe || !!BUILD[b.t].use);
 function nextSid() { S.sid = (S.sid || 0) + 1; return S.sid; }
@@ -830,6 +855,7 @@ function place(t, x, y, d, quiet, ghostOk) {
   }
   if (err) { if (!quiet && performance.now() - lastWarn > 900) { toast(err); sfx('error'); lastWarn = performance.now(); } return false; }
   autoCraft(BUILD[t].cost); pay(BUILD[t].cost);
+  if (t !== 'train' && t !== 'zep') { const sz = BUILD[t].size || 1; let got = 0; for (let yy = 0; yy < sz; yy++) for (let xx = 0; xx < sz; xx++) got += fellAt(x + xx, y + yy, 2); if (got) sfx('chop'); }
   rec({ o: 'p', t, x, y });
   if (ghostAt(x, y)) dropGhost(ghostAt(x, y));
   sfx(isBoiler({ t }) ? 'steam' : 'place');
@@ -853,7 +879,7 @@ function contents(b) {
     case 'smelter': case 'smelter2': add(b.inT, b.inN); add(b.outT, b.outN); if (b.cur) add(b.cur, SMELT[b.cur].n); break;
     case 'assembler': case 'assembler2': for (const k in b.inv) add(k, b.inv[k]); add(b.rec, b.outN);
       if (b.cur && RECIPES[b.rec]) for (const k in RECIPES[b.rec].in) add(k, RECIPES[b.rec].in[k]); break;
-    case 'boiler': case 'bigboiler': add('hiili', b.fuel); break;
+    case 'boiler': case 'bigboiler': add('hiili', b.fuel); add('puu', b.wood || 0); break;
     case 'refinery': add('voiteluoljy', b.outN); break;
     case 'mast': for (const k in b.inv) add(k, b.inv[k]); break;
     case 'chest': for (const k in b.inv) add(k, b.inv[k]); break;
@@ -1041,7 +1067,12 @@ const ACC = {
     if ((b.inv[item] || 0) >= r.in[item] * 3) return false;
     b.inv[item] = (b.inv[item] || 0) + 1; return true;
   },
-  boiler(b, item) { if (item !== 'hiili' || b.fuel >= BUILD[b.t].cap) return false; b.fuel++; return true; },
+  boiler(b, item) {
+    if (b.fuel + (b.wood || 0) >= BUILD[b.t].cap) return false;
+    if (item === 'hiili') { b.fuel++; return true; }
+    if (item === 'puu') { b.wood = (b.wood || 0) + 1; return true; }
+    return false;
+  },
   chest(b, item) { if (b.n >= 400) return false; b.inv[item] = (b.inv[item] || 0) + 1; b.n++; return true; },
   splitter(b, item) { if (b.buf.length >= 2) return false; b.buf.push(item); return true; },
   hq(b, item) {
@@ -1191,8 +1222,9 @@ function tick(dt) {
     if (ld > 0) {
       if (b.burn <= 0 && boilerFuel(b)) {
         if (b.t === 'oilboiler') { onet(b).amt -= BUILD.oilboiler.oilUse; stat('raakaoljy', BUILD.oilboiler.oilUse, 'c'); }
-        else { b.fuel--; stat('hiili', 1, 'c'); }
-        b.burn = BUILD[b.t].burnT;
+        else if (b.fuel > 0) { b.fuel--; stat('hiili', 1, 'c'); }
+        else { b.wood--; stat('puu', 1, 'c'); b.burn = BUILD[b.t].burnT * .5; }
+        if (b.burn <= 0) b.burn = BUILD[b.t].burnT;
       }
       if (b.burn > 0) { b.burn = Math.max(0, b.burn - dt * ld); b.l = ld; }
     }
@@ -1395,7 +1427,7 @@ function rr(x, y, w, h, r) { g.beginPath(); if (g.roundRect) g.roundRect(x, y, w
 function circle(x, y, r) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); }
 
 // ---- terrain sprites
-const GROUND = [], ORES = [[], [], [], [], [], [], []], DECO = [];
+const GROUND = [], ORES = [[], [], [], [], [], [], []], DECO = [], TREES = [];
 const SOIL_STYLE = ['rgba(18,10,4,.30)', 'rgba(18,10,4,.2)', 'rgba(18,10,4,.1)', null, 'rgba(90,110,40,.08)', 'rgba(90,110,40,.15)', 'rgba(100,125,45,.22)'];
 const WATER_COL = [null, '#2c6166', '#245059', '#1d434c', '#183943', '#14303a'];
 let iconMode = false;
@@ -1421,6 +1453,28 @@ function buildSprites() {
   deco(x => { [[18, 30, '#b33a2a'], [26, 27, '#c9472f'], [31, 32, '#b33a2a']].forEach(([px, py, c]) => { x.fillStyle = '#e6dcc4'; x.fillRect(px - 1, py, 2, 5); x.beginPath(); x.arc(px, py, 4, Math.PI, 0); x.fillStyle = c; x.fill(); x.fillStyle = '#f2ead6'; x.fillRect(px - 2, py - 2, 1.2, 1.2); }); });
   deco(x => { x.save(); x.translate(24, 26); x.scale(DS, DS); const g0 = g; g = x; gear(.24, 9, .4, '#7a4a2a', '#4a2a16'); g = g0; x.restore();
     x.fillStyle = '#3a3024'; x.fillRect(8, 28, 32, 12); x.strokeStyle = '#55602f'; x.lineWidth = 1.2; x.beginPath(); x.moveTo(12, 30); x.lineTo(13, 25); x.moveTo(34, 30); x.lineTo(35, 24); x.stroke(); });
+  // tree sprites: 3 broadleaf + 2 conifers, drawn larger than a tile with their own shadow
+  for (let v = 0; v < 5; v++) {
+    const c = mk(64), x = c.getContext('2d');
+    x.fillStyle = 'rgba(0,0,0,.32)'; x.beginPath(); x.ellipse(38, 44, 19, 12, 0, 0, 7); x.fill();
+    if (v < 3) {
+      const base = ['#355a24', '#3f6526', '#4b5e22'][v], mid = ['#4a7a2e', '#5a8a32', '#6a7a2c'][v], hi = ['#6e9e42', '#82b04a', '#93a044'][v];
+      const blobs = [[32, 30, 15], [22, 34, 11], [42, 35, 11], [30, 22, 11], [38, 25, 9]];
+      for (const [bx, by, br] of blobs) { x.beginPath(); x.arc(bx, by, br, 0, 7); x.fillStyle = base; x.fill(); }
+      for (const [bx, by, br] of blobs) { x.beginPath(); x.arc(bx - 2, by - 3, br * .75, 0, 7); x.fillStyle = mid; x.fill(); }
+      for (const [bx, by, br] of blobs.slice(0, 3)) { x.beginPath(); x.arc(bx - 4, by - 6, br * .35, 0, 7); x.fillStyle = hi; x.fill(); }
+      if (v === 2) { x.fillStyle = '#c8823a'; for (let k = 0; k < 5; k++) { x.beginPath(); x.arc(20 + k * 6, 24 + (k % 2) * 10, 1.8, 0, 7); x.fill(); } }
+    } else {
+      const cols = v === 3 ? ['#1f3f2a', '#2c5236', '#3d6a46'] : ['#24402c', '#335a3a', '#4a7550'];
+      for (let ring = 0; ring < 3; ring++) {
+        const r = 20 - ring * 6; x.beginPath();
+        for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, rr2 = k % 2 ? r * .7 : r; x.lineTo(32 + Math.cos(a) * rr2, 30 + Math.sin(a) * rr2); }
+        x.closePath(); x.fillStyle = cols[ring]; x.fill();
+      }
+      x.beginPath(); x.arc(30, 28, 3, 0, 7); x.fillStyle = '#5e8a5e'; x.fill();
+    }
+    TREES.push(c);
+  }
   deco(x => { x.strokeStyle = '#4d6b30'; x.lineWidth = 1.6; for (let k = 0; k < 5; k++) { const a = -2.6 + k * .45; x.beginPath(); x.moveTo(24, 34); x.quadraticCurveTo(24 + Math.cos(a) * 8, 34 + Math.sin(a) * 14, 24 + Math.cos(a) * 15, 34 + Math.sin(a) * 12); x.stroke(); } });
   for (let v = 0; v < 4; v++) {
     const c = mk(S2), x = c.getContext('2d'); x.drawImage(GROUND[v], 0, 0);
@@ -1539,6 +1593,11 @@ function itemShape(name) {
     case 'drop':
       g.beginPath(); g.moveTo(0, -.38); g.bezierCurveTo(.3, -.05, .3, .3, 0, .32); g.bezierCurveTo(-.3, .3, -.3, -.05, 0, -.38); g.fillStyle = c; g.fill(); g.stroke();
       g.fillStyle = 'rgba(160,120,220,.5)'; g.beginPath(); g.ellipse(-.08, .05, .06, .12, -.3, 0, 7); g.fill(); break;
+    case 'log':
+      g.save(); g.rotate(-.35); rr(-.38, -.15, .66, .3, .12); g.fillStyle = c; g.fill(); g.stroke();
+      g.strokeStyle = dk; g.lineWidth = .025; g.beginPath(); g.moveTo(-.3, -.05); g.lineTo(.15, -.05); g.moveTo(-.2, .06); g.lineTo(.2, .06); g.stroke();
+      g.beginPath(); g.ellipse(.28, 0, .1, .15, 0, 0, 7); g.fillStyle = '#d9b07a'; g.fill(); g.strokeStyle = dk; g.lineWidth = .03; g.stroke();
+      g.beginPath(); g.ellipse(.28, 0, .045, .07, 0, 0, 7); g.stroke(); g.restore(); break;
     case 'engine':
       rr(-.36, -.08, .72, .38, .05); g.fill(); g.stroke();
       g.fillStyle = P.brass; g.strokeStyle = P.brassD; for (const x of [-.2, .02]) { rr(x, -.36, .16, .3, .03); g.fill(); g.stroke(); }
@@ -2052,7 +2111,10 @@ function render(fdt) {
     if (z >= 16 && !o && !grid[i]) { const dv = hash(x + 911, y + 37); if (dv < .1) g.drawImage(DECO[(dv * 60) | 0], x, y, 1, 1); }
   }
   if (!tintC) buildTint();
-  if (!farView) { g.imageSmoothingEnabled = true; g.drawImage(tintC, 0, 0, W, H); }
+  if (!farView) {
+    g.imageSmoothingEnabled = true; g.drawImage(tintC, 0, 0, W, H);
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const tv = tree[idx(x, y)]; if (tv) { const sw = Math.sin(t * 1.3 + x * .7 + y * .3) * .025; g.drawImage(TREES[tv - 1], x - .2 + sw, y - .35, 1.4, 1.4); } }
+  }
   // water
   if (!farView) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = idx(x, y); if (terrain[i] === 1) { g.fillStyle = WATER_COL[depth[i] || 5]; g.fillRect(x, y, 1.02, 1.02); } }
   g.fillStyle = 'rgba(255,250,230,.8)';
@@ -2312,6 +2374,20 @@ function render(fdt) {
 
   // screen-space overlays
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // morning fog
+  { const ph = dayPhase(), fog = S.noNight ? 0 : ph > .86 ? (ph - .86) / .14 : ph < .1 ? 1 - ph / .1 : 0;
+    if (fog > .01) { const sp = puffSprite(false); for (let k = 0; k < 9; k++) { const r = 260 + hash(k, 2) * 260, fx = ((hash(k, 1) * (CW + 600) + t * (6 + k)) % (CW + 600)) - 300 - (cam.x * z * .15) % 300, fy = hash(k, 3) * CH; g.globalAlpha = .22 * fog; g.drawImage(sp, fx - r, fy - r * .5, r * 2, r); } g.globalAlpha = 1; } }
+  // a flock of birds crossing in daylight now and then
+  if (nightness < .3 && !(S.storm && S.storm.end > S.time)) {
+    const per = 40, fi = Math.floor(t / per), pr = (t % per) / per;
+    if (hash(fi, 77) < .55 && pr < .7) {
+      const dir = hash(fi, 5) < .5 ? 1 : -1, by = 80 + hash(fi, 9) * (CH * .5), bx = dir > 0 ? -60 + pr / .7 * (CW + 120) : CW + 60 - pr / .7 * (CW + 120);
+      g.strokeStyle = 'rgba(30,24,20,.75)'; g.lineWidth = 1.6; g.beginPath();
+      for (let k = 0; k < 7; k++) { const row = Math.ceil(k / 2), side = k % 2 ? 1 : -1, ox = bx - dir * row * 16, oy = by + side * row * 11 + Math.sin(t * 2 + k) * 2, fl = Math.sin(t * 11 + k * 1.3) * 4;
+        g.moveTo(ox - 6, oy - fl); g.quadraticCurveTo(ox - 3, oy - 3 - fl * .3, ox, oy); g.quadraticCurveTo(ox + 3, oy - 3 - fl * .3, ox + 6, oy - fl); }
+      g.stroke();
+    }
+  }
   const vg = g.createRadialGradient(CW / 2, CH / 2, Math.min(CW, CH) * .35, CW / 2, CH / 2, Math.max(CW, CH) * .75);
   vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(10,6,2,.55)');
   g.fillStyle = vg; g.fillRect(0, 0, CW, CH);
@@ -2484,7 +2560,7 @@ function drawTutArrow() {
 function hint() {
   const has = t => blist.some(b => b.t === t);
   if (!has('boiler')) return 'Rakenna <b>Kattila (5)</b> vesirajaan. Vesiruudut korostuvat, kun kattila on valittuna.';
-  if (!blist.some(b => isBoiler(b) && (b.fuel > 0 || b.burn > 0))) return 'Kattila tarvitsee hiiltä. Klikkaa kattilaa tyhjällä kädellä ja lisää hiiltä, tai louhi hiiltä käsin klikkaamalla mustaa esiintymää.';
+  if (!blist.some(b => isBoiler(b) && (boilerFuel(b) || b.burn > 0))) return 'Kattila tarvitsee hiiltä tai puuta. Klikkaa kattilaa tyhjällä kädellä ja lisää hiiltä, tai louhi hiiltä käsin klikkaamalla mustaa esiintymää.';
   const unlinked = blist.find(b => BUILD[b.t] && BUILD[b.t].use && (!netOf(b) || !netOf(b).boilers));
   if (unlinked) return `${BUILD[unlinked.t].n} ei saa höyryä. Rakenna <b>Höyryputki (2)</b> kattilasta koneeseen. Vierekkäiset koneet johtavat höyryä toisilleen.`;
   if (!has('drill')) return 'Aseta <b>Höyrypora (3)</b> rautamalmin päälle. Käännä R:llä niin, että nuoli osoittaa kuljettimeen.';
@@ -2591,8 +2667,8 @@ function renderInfo() {
     case 'boiler': case 'bigboiler': {
       const B = BUILD[b.t];
       const n = netOf(b);
-      h += kv('Verkossa koneita', n ? n.users : 0) + kv('Hiiltä', `${b.fuel} / ${B.cap}`) + kv('Teho', `${B.gen} höyryä/s`) + kv('Kuormitus', Math.round((b.l || 0) * 100) + ' %') + prog(b.burn / B.burnT);
-      h += `<div class="acts"><button class="sbtn" data-a="fuel" data-n="1" ${(S.inv.hiili || 0) >= 1 ? '' : 'disabled'}>Lisää 1 hiili</button><button class="sbtn" data-a="fuel" data-n="10" ${(S.inv.hiili || 0) >= 1 ? '' : 'disabled'}>Lisää 10</button></div>`;
+      h += kv('Verkossa koneita', n ? n.users : 0) + kv('Polttoaine', `${b.fuel} hiiltä, ${b.wood || 0} puuta / ${B.cap}`) + kv('Teho', `${B.gen} höyryä/s`) + kv('Kuormitus', Math.round((b.l || 0) * 100) + ' %') + prog(b.burn / B.burnT);
+      h += `<div class="acts"><button class="sbtn" data-a="fuel" data-n="1" ${(S.inv.hiili || 0) >= 1 ? '' : 'disabled'}>Lisää 1 hiili</button><button class="sbtn" data-a="fuel" data-n="10" ${(S.inv.hiili || 0) >= 1 ? '' : 'disabled'}>Lisää 10</button><button class="sbtn" data-a="fuelW" data-n="10" ${(S.inv.puu || 0) >= 1 ? '' : 'disabled'}>Lisää 10 puuta</button></div><p class="pat-desc">Puu palaa puolet nopeammin kuin hiili. Kuljettimet voivat tuoda kumpaa tahansa.</p>`;
       break;
     }
     case 'chest': {
@@ -2731,7 +2807,8 @@ function doAction(el) {
     case 'stats': toggleStats(); return;
     case 'tutSkip': S.tut = TUT.length; tutTarget = null; renderGoal(); return;
     case 'cat': curCat = el.dataset.v; renderTools(); return;
-    case 'fuel': if (b) { const n = Math.min(+el.dataset.n, S.inv.hiili || 0, BUILD[b.t].cap - b.fuel); if (n > 0) { b.fuel += n; pay({ hiili: n }); } } break;
+    case 'fuel': if (b) { const n = Math.min(+el.dataset.n, S.inv.hiili || 0, BUILD[b.t].cap - b.fuel - (b.wood || 0)); if (n > 0) { b.fuel += n; pay({ hiili: n }); } } break;
+    case 'fuelW': if (b) { const n = Math.min(+el.dataset.n, S.inv.puu || 0, BUILD[b.t].cap - b.fuel - (b.wood || 0)); if (n > 0) { b.wood = (b.wood || 0) + n; pay({ puu: n }); } } break;
     case 'rec': if (b) setRecipe(b, el.dataset.v); break;
     case 'chestOut': if (b) b.outOn = !b.outOn; break;
     case 'chestTake': if (b) { for (const k in b.inv) give(k, b.inv[k]); b.inv = {}; b.n = 0; } break;
@@ -2931,6 +3008,11 @@ function clickTile(t) {
   const b = grid[idx(t.x, t.y)];
   if (b) { openInfo(b); return; }
   closeInfo();
+  if (tree[idx(t.x, t.y)] && inRegion(t.x, t.y)) {
+    fellAt(t.x, t.y, 3); sfx('chop');
+    floaters.push({ x: t.x + .5, y: t.y + .3, text: '+3 Puu', life: 0 });
+    renderInv(); return;
+  }
   const o = ore[idx(t.x, t.y)];
   if (o && ORE_ITEM[o] && inRegion(t.x, t.y)) {
     const it = ORE_ITEM[o]; give(it); stat(it, 1, 'p'); sfx('mine');
@@ -2972,7 +3054,7 @@ function mapTipHTML() {
     if (b.t === 'drill' || b.t === 'drill2') { const o = ORE_ITEM[ore[idx(b.x, b.y)]]; if (o) extra = `Louhii: ${ITEMS[o].n}`; }
     else if (b.t === 'smelter' || b.t === 'smelter2') extra = b.inT ? `${ITEMS[b.inT].n} ${b.inN} → ${SMELT[b.inT] ? ITEMS[SMELT[b.inT].out].n : ''}` : 'Ei syötettä';
     else if (b.t === 'assembler' || b.t === 'assembler2') extra = b.rec ? `Resepti: ${ITEMS[b.rec].n}` : 'Ei reseptiä';
-    else if (isBoiler(b)) extra = b.t === 'oilboiler' ? `Öljyä ${Math.round(onet(b)?.amt || 0)}` : `Hiiltä ${b.fuel} / ${BUILD[b.t].cap}`;
+    else if (isBoiler(b)) extra = b.t === 'oilboiler' ? `Öljyä ${Math.round(onet(b)?.amt || 0)}` : `Hiiltä ${b.fuel}, puuta ${b.wood || 0} / ${BUILD[b.t].cap}`;
     else if (b.n != null && (b.t === 'chest' || b.t === 'station' || b.t === 'mast')) extra = `Tavaroita ${b.n}`;
     else if (b.items) extra = b.items.length ? b.items.slice(0, 4).map(it => ITEMS[it.i].n).join(', ') : 'Tyhjä';
     else if (b.t === 'pipe') { const n = netOf(b); extra = n ? `Höyry ${Math.round(n.last)} / ${Math.round(n.supply)}` : ''; }
@@ -2984,6 +3066,7 @@ function mapTipHTML() {
   if (gh) { const c = BUILD[gh.t].cost, miss = Object.keys(c).filter(k => (S.inv[k] || 0) < c[k]).map(k => `${c[k] - (S.inv[k] || 0)} ${ITEMS[k].n.toLowerCase()}`); return `<b>${BUILD[gh.t].n}</b><div class="warn">Suunniteltu</div><div class="mut">${miss.length ? 'Puuttuu: ' + miss.join(', ') : 'Odottaa rakentamista'}</div>`; }
   if (!inRegion(hover.x, hover.y)) return '<b>Kartoittamaton</b><div class="mut">Laajenna laaksoa maanmittauksella</div>';
   const o = ore[i];
+  if (tree[i]) return '<b>Metsä</b><div class="mut">Klikkaa kaataaksesi (3 puuta). Puut kaatuvat myös, kun niiden päälle rakennetaan.</div>';
   if (o === 6) return '<b>Öljylähde</b><div class="mut">Rakenna päälle öljypumppu</div>';
   if (o) return `<b>${ITEMS[ORE_ITEM[o]].n}</b><div class="mut">Klikkaa louhiaksesi käsin tai aseta pora päälle</div>`;
   if (terrain[i] === 1) return '<b>Vesi</b><div class="mut">Kattilat rakennetaan veden viereen</div>';
@@ -3104,9 +3187,10 @@ function serialize() { return JSON.stringify({ v: 2, S, cam: { x: cam.x, y: cam.
 function restore(str) {
   const o = JSON.parse(str);
   if (!o || (o.v !== 1 && o.v !== 2)) throw new Error('bad save');
-  S = o.S; genMap(S.seed); miniBase = null;
+  S = o.S; genMap(S.seed); applyFelled(); miniBase = null;
   grid = new Array(W * H).fill(null); blist = o.b; trains = o.tr || []; zeps = o.zp || [];
   for (const b of blist) occupy(b, b);
+  for (let i = 0; i < W * H; i++) if (tree[i] && grid[i]) { tree[i] = 0; (S.felled = S.felled || []).push(i); }
   cam.x = o.cam.x; cam.y = o.cam.y; cam.z = o.cam.z;
   netsDirty = true; stats = new Map(); deliv = []; hist = []; indexGhosts();
   if (S.tut == null) S.tut = S.level > 0 || blist.length > 6 ? 99 : 0;
@@ -3114,7 +3198,7 @@ function restore(str) {
 }
 function save() { try { localStorage.setItem(SAVE_KEY, serialize()); return true; } catch (e) { return false; } }
 function newGame() {
-  S = { seed: (Math.random() * 1e9) | 0, inv: { rautalevy: 80, tiili: 50, kuparilevy: 20, hiili: 30, putki: 30 }, level: 0, time: 0, won: false, sid: 0, region: 32, tut: 0, ghosts: [] };
+  S = { seed: (Math.random() * 1e9) | 0, inv: { rautalevy: 80, tiili: 50, kuparilevy: 20, hiili: 30, putki: 30 }, level: 0, time: 0, won: false, sid: 0, region: 32, tut: 0, ghosts: [], felled: [] };
   hist = []; ghostGrid = new Map();
   genMap(S.seed); miniBase = null;
   grid = new Array(W * H).fill(null); blist = []; trains = []; zeps = [];
@@ -3154,6 +3238,7 @@ function buildMiniBase() {
   const cols = [null, [138, 150, 163], [196, 122, 58], [40, 36, 34], [179, 162, 131], [143, 203, 181], [90, 60, 130]];
   for (let i = 0; i < W * H; i++) {
     let c = terrain[i] === 1 ? [27, 59, 67] : ore[i] ? cols[ore[i]] : [58, 48, 36];
+    if (tree[i]) c = [44, 74, 34];
     if (!inRegion(i % W, (i / W) | 0)) c = c.map(v => v * .35);
     im.data[i * 4] = c[0]; im.data[i * 4 + 1] = c[1]; im.data[i * 4 + 2] = c[2]; im.data[i * 4 + 3] = 255;
   }
@@ -3270,6 +3355,7 @@ function sfx(kind) {
     case 'steam': noise(.5, .1, 3200); tone(150, .12, 'square', .03); break;
     case 'error': tone(120, .14, 'sawtooth', .035, 0, 95); break;
     case 'hiss': noise(.35, .025, 5000); break;
+    case 'chop': noise(.06, .2, 900); tone(140, .08, 'triangle', .06); noise(.05, .14, 700, .12); break;
     case 'thunder': noise(1.6, .22, 120); noise(.4, .12, 400); break;
     case 'patent': [392, 494, 587, 784].forEach((f, i) => tone(f, .45, 'triangle', .06, i * .09)); noise(.8, .06, 3000, .3); break;
   }
@@ -3364,6 +3450,7 @@ const hot = window.claude?.hot;
 if (hot?.ready) hot.ready(start); else start(hot?.data ?? {});
 window.__setCam = (x, y) => { cam.x = x; cam.y = y; };
 window.__render = f => render(f); window.__cam = () => cam;
+window.__tree = (x, y) => { if (x != null) return tree[idx(x, y)]; for (let r = 3; r < 50; r++) for (let dx = -r; dx <= r; dx++) { const X = 64 + dx, Y = 64 - r; if (tree[idx(X, Y)] && inRegion(X, Y)) return { x: X, y: Y }; } return null; };
 window.__game = { get zeps() { return zeps; }, get S() { return S; }, get blist() { return blist; }, get trains() { return trains; }, get nets() { return nets; }, grid: () => grid, rateOf, tick, place, placeCheck, ore: () => ore, terrain: () => terrain, idx, makeB, insertAt };
 </script>
 </body>
