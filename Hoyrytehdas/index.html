@@ -252,6 +252,21 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 .book .bk h4 img { width: 24px; height: 24px; }
 .book .ih { font-family: var(--display); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--brass); margin-top: 6px; }
 .book .il { color: var(--parchment); margin-top: 2px; }
+.calc { border: 1px solid var(--brass-dark); border-radius: 6px; padding: 4px 14px 10px; margin-bottom: 14px; background: rgba(201,161,74,.05); }
+.crow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-bottom: 8px; }
+.crow select, .crow input, .bpsave input { background: #120e0b; color: var(--parchment); border: 1px solid var(--brass-dark); border-radius: 4px; padding: 5px 8px; font: inherit; font-size: 14px; }
+.crow input { width: 90px; font-variant-numeric: tabular-nums; }
+.ctbl { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.ctbl th { text-align: left; font-weight: 500; color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 4px 6px; border-bottom: 1px solid #3a2e22; }
+.ctbl td { padding: 4px 6px; border-bottom: 1px solid #2a2018; }
+.ctbl td:first-child span { display: inline-flex; align-items: center; gap: 6px; }
+.ctbl .lock { color: var(--warn); }
+.bkcalc { margin-left: auto; font-family: var(--body); letter-spacing: 0; font-size: 11px; padding: 1px 6px; }
+.loglist { max-height: 55vh; overflow: auto; display: grid; gap: 4px; margin-bottom: 8px; }
+.lg { font-size: 13px; padding: 5px 8px; border-bottom: 1px solid #2a2018; display: grid; grid-template-columns: 48px 1fr; gap: 8px; }
+.lg span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.bpsave { display: grid; grid-template-columns: 1fr auto; gap: 6px 8px; margin-bottom: 12px; }
+.bpsave label { grid-column: 1 / -1; }
 .slots { display: grid; gap: 8px; }
 .slot { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid #3a2e22; border-radius: 4px; font-size: 13px; }
 .slot b { font-family: var(--display); color: var(--brass-light); font-size: 13px; }
@@ -279,6 +294,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
   <div class="steam"><span class="lbl">Paine</span><b id="presTxt">–</b></div>
   <div class="spacer"></div>
   <button class="tbtn" id="alertBtn" data-a="alert" hidden>Hälytykset 0</button>
+  <button class="tbtn" data-a="log" title="Viestiloki (O)">Loki</button>
   <div class="seg" role="group" aria-label="Pelinopeus">
     <button data-a="spd" data-v="0" title="Tauko (välilyönti)">Tauko</button><button data-a="spd" data-v="1" class="on">1×</button><button data-a="spd" data-v="2">2×</button><button data-a="spd" data-v="4">4×</button>
   </div>
@@ -322,7 +338,10 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <kbd>Z X C V B</kbd><span>Valitse alapalkin luokka: Logistiikka, Tuotanto, Energia ja öljy, Liikenne, Telakka</span>
       <kbd>1 – 9</kbd><span>Valitse kortti avoimesta luokasta. Numerot seuraavat näkyviä kortteja vasemmalta oikealle</span>
       <kbd>I</kbd><span>Tuotantotilastot</span>
-      <kbd>K</kbd><span>Tuotekirja: mistä jokaisen tuotteen saa ja mihin sitä käytetään. Saman tiedon näkee myös osoittamalla tuotetta missä tahansa</span>
+      <kbd>L</kbd><span>Kaavakirjasto: tallenna kopioituja kaavoja nimellä ja käytä niitä uudelleen</span>
+      <kbd>O</kbd><span>Viestiloki</span>
+      <kbd>Ctrl / Shift + klikkaus</kbd><span>Kopioi rakennuksen asetukset (resepti, suodatin, tila) / liitä ne samanlaiseen rakennukseen</span>
+      <kbd>K</kbd><span>Tuotekirja ja tuotantolaskuri: mistä jokaisen tuotteen saa, mihin sitä käytetään ja montako konetta haluttu tuotanto vaatii. Saman tiedon näkee myös osoittamalla tuotetta missä tahansa</span>
       <kbd>Vasen hiiri</kbd><span>Rakenna. Kuljettimet: vedä hiirellä, suunta seuraa vetoa</span>
       <kbd>Oikea hiiri</kbd><span>Pura rakennus (materiaalit palautuvat)</span>
       <kbd>R</kbd><span>Käännä (Shift+R vastapäivään)</span>
@@ -348,10 +367,34 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
   </div>
 </div>
 
+<div id="logM" class="modal" hidden>
+  <div class="panel">
+    <h1>Viestiloki</h1>
+    <p class="lead">Viimeisimmät 100 ilmoitusta uusimmasta vanhimpaan. Aika on peliaikaa.</p>
+    <div id="logList" class="loglist"></div>
+    <button class="big" data-a="log">Sulje</button>
+  </div>
+</div>
+
+<div id="bpM" class="modal" hidden>
+  <div class="panel">
+    <h1>Kaavakirjasto</h1>
+    <p class="lead">Tallenna kopioimasi kaava nimellä ja käytä sitä myöhemmin missä tahansa pelissä. Kopioi ensin alue (Ctrl + C ja vedä suorakulmio).</p>
+    <div class="bpsave"><label for="bpName" class="rate">Kaavan nimi</label><input id="bpName" type="text" maxlength="40" placeholder="esim. Messinkilinja"><button class="sbtn" data-a="bpSave">Tallenna nykyinen kaava</button></div>
+    <div id="bpList" class="slots"></div>
+    <button class="big" data-a="bp">Sulje</button>
+  </div>
+</div>
+
 <div id="book" class="modal" hidden>
   <div class="panel wide">
     <h1>Tuotekirja</h1>
     <p class="lead">Kaikki laakson tuotteet tuotantoketjun järjestyksessä: mistä niitä saa ja mihin niitä tarvitaan. Lukitut reseptit kertovat, minkä patentin takana ne ovat.</p>
+    <div class="calc">
+      <h3>Tuotantolaskuri</h3>
+      <div class="crow"><label for="calcItem" class="rate">Tuote</label><select id="calcItem"></select><label for="calcRate" class="rate">Määrä</label><input id="calcRate" type="number" min="1" max="9999" value="30"><span class="rate">kpl / min</span></div>
+      <div id="calcOut"></div>
+    </div>
     <div id="bookList" class="book"></div>
     <button class="big" data-a="book">Sulje</button>
   </div>
@@ -414,7 +457,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.15';
+const VERSION = '0.16';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -2642,7 +2685,10 @@ document.addEventListener('pointerover', e => {
   if (el) { if (el !== tipItemEl) { tipItemEl = el; showTip(el, itemInfoHTML(el.dataset.item)); } return; }
   if (tipItemEl) { tipItemEl = null; if (!(e.target.closest && e.target.closest('[data-tool]'))) $('tip').hidden = true; }
 });
-function toast(msg) { const d = document.createElement('div'); d.textContent = msg; $('toast').appendChild(d); setTimeout(() => d.remove(), 3300); }
+const msgLog = [];
+function toast(msg) { msgLog.push({ t: S ? S.time : 0, msg }); if (msgLog.length > 100) msgLog.shift(); if (!$('logM').hidden) renderLog(); toast2(msg); }
+function renderLog() { $('logList').innerHTML = msgLog.length ? msgLog.slice().reverse().map(m => `<div class="lg"><span>${fmtTime(m.t)}</span>${m.msg.replace(/</g, '&lt;')}</div>`).join('') : '<div class="empty">Ei viestejä vielä.</div>'; }
+function toast2(msg) { const d = document.createElement('div'); d.textContent = msg; $('toast').appendChild(d); setTimeout(() => d.remove(), 3300); }
 function setHTML(el, h) { if (el._h !== h) { el.innerHTML = h; el._h = h; } }
 
 const CAT_KEYS = ['Z', 'X', 'C', 'V', 'B', 'N', 'M'];
@@ -2672,6 +2718,7 @@ function renderTools() {
     h += `<button class="tool${tool === k ? ' on' : ''}${affordable(BUILD[k].cost) ? '' : ' poor'}" data-tool="${k}" aria-label="${BUILD[k].n}"><span class="k">${i === 9 ? 0 : i + 1}</span><img src="${TURL[k]}" alt=""><span class="nm">${BUILD[k].n}</span></button>`;
   });
   h += '<span class="sep"></span>';
+  h += `<button class="tool" data-a="bp" aria-label="Kaavakirjasto"><span class="k">L</span><img src="${TURL.paste}" alt=""><span class="nm">Kaavat</span></button>`;
   h += `<button class="tool${tool === 'copy' ? ' on' : ''}" data-tool="copy" aria-label="Kopioi alue"><span class="k l">Ctrl+C</span><img src="${TURL.copy}" alt=""><span class="nm">Kopioi</span></button>`;
   if (S.clip) h += `<button class="tool${tool === 'paste' ? ' on' : ''}" data-tool="paste" aria-label="Liitä kaava"><span class="k l">Ctrl+V</span><img src="${TURL.paste}" alt=""><span class="nm">Liitä</span></button>`;
   h += `<button class="tool${tool === 'remove' ? ' on' : ''}" data-tool="remove" aria-label="Pura"><span class="k">Del</span><img src="${TURL.remove}" alt=""><span class="nm">Pura</span></button>`;
@@ -3047,6 +3094,17 @@ function doAction(el) {
     } break;
     case 'stats': toggleStats(); return;
     case 'book': toggleBook(); return;
+    case 'calcSet': toggleBook(el.dataset.v); return;
+    case 'log': $('logM').hidden = !$('logM').hidden; if (!$('logM').hidden) renderLog(); return;
+    case 'bp': $('bpM').hidden = !$('bpM').hidden; if (!$('bpM').hidden) renderBps(); return;
+    case 'bpSave': {
+      if (!S.clip) { toast('Kopioi ensin alue kaavaksi (Ctrl + C)'); return; }
+      const nm = ($('bpName').value || '').trim() || `Kaava ${loadBps().length + 1}`;
+      const list = loadBps(); list.unshift({ name: nm, clip: JSON.parse(JSON.stringify(S.clip)), when: Date.now() }); storeBps(list.slice(0, 30));
+      $('bpName').value = ''; toast(`Kaava tallennettu kirjastoon: ${nm}`); renderBps(); return;
+    }
+    case 'bpUse': { const b2 = loadBps()[+el.dataset.v]; if (!b2) return; S.clip = JSON.parse(JSON.stringify(b2.clip)); $('bpM').hidden = true; tool = null; selectTool('paste'); toast(`Liitä kaava: ${b2.name}`); return; }
+    case 'bpDel': { const list = loadBps(); const [gone] = list.splice(+el.dataset.v, 1); storeBps(list); if (gone) toast(`Kaava poistettu: ${gone.name}`); renderBps(); return; }
     case 'cfill': {
       const c = S.contract; if (!c) return;
       const n = Math.min(S.inv[c.i] || 0, c.n - c.got); if (n <= 0) return;
@@ -3086,11 +3144,50 @@ $('bSave').onclick = () => { if (save()) toast('Peli tallennettu'); else toast('
 const C_SUP = '#b48420', C_DEM = '#2f9ccf';
 let chartHover = -1;
 const BOOK_ORDER = ['rautamalmi', 'kuparimalmi', 'hiili', 'kivi', 'puu', 'sinkkimalmi', 'rautalevy', 'kuparilevy', 'tiili', 'lankku', 'sinkki', 'hammasratas', 'kuparikela', 'putki', 'messinki', 'teras', 'venttiili', 'kellokoneisto', 'raakaoljy', 'voiteluoljy', 'mantamoottori'];
-function toggleBook() {
-  const m = $('book'); m.hidden = !m.hidden; if (m.hidden) return;
+// ---- production calculator
+function chainSource(k) {
+  if (ORE_ITEM.includes(k)) return { b: 'drill', perMin: BUILD.drill.rate * 60 };
+  if (k === 'puu') return { b: 'lumber', perMin: 24 };
+  if (k === 'raakaoljy') return { b: 'pumpjack', perMin: BUILD.pumpjack.oil * 60 };
+  if (k === 'voiteluoljy') return { b: 'refinery', in: { raakaoljy: 20 }, k: 2, perMin: 40 };
+  if (RECIPES[k]) { const r = RECIPES[k]; return { b: 'assembler', in: r.in, k: r.k, perMin: r.k * 60 / r.t, big: 'assembler2' }; }
+  for (const i in SMELT) { const r = SMELT[i]; if (r.out === k) return { b: 'smelter', in: { [i]: r.n }, k: r.k, perMin: r.k * 60 / r.t, big: 'smelter2' }; }
+  for (const i in SAW) { const r = SAW[i]; if (r.out === k) return { b: 'saw', in: { [i]: r.n }, k: r.k, perMin: r.k * 60 / r.t }; }
+  return null;
+}
+function calcChain(target, perMin) {
+  const need = {}, order = [];
+  const add = (k, rate, depth) => {
+    if (depth > 12) return;
+    need[k] = (need[k] || 0) + rate; if (!order.includes(k)) order.push(k);
+    const src = chainSource(k); if (src && src.in) for (const i in src.in) add(i, rate / src.k * src.in[i], depth + 1);
+  };
+  add(target, perMin, 0);
+  return order.map(k => { const src = chainSource(k), r = need[k], m = src ? r / src.perMin : 0; return { k, r, src, m, steam: src ? Math.ceil(m - 1e-9) * (BUILD[src.b].use || 0) : 0 }; });
+}
+function renderCalc() {
+  const k = $('calcItem').value, rate = Math.max(1, Math.min(9999, +$('calcRate').value || 1));
+  const rows = calcChain(k, rate); let steamSum = 0;
+  const f1 = v => v >= 10 ? Math.round(v) : (Math.round(v * 10) / 10).toString().replace('.', ',');
+  const body = rows.map(r => { steamSum += r.steam; const bnm = r.src ? BUILD[r.src.b].n : '–';
+    const big = r.src && r.src.big && unlocked(r.src.big) ? ` <span class="rate">tai ${Math.ceil(r.m / 3 - 1e-9)} × ${BUILD[r.src.big].n.toLowerCase()}</span>` : '';
+    return `<tr data-item="${r.k}"><td><span>${icon(r.k)}${ITEMS[r.k].n}</span></td><td>${f1(r.r)}</td><td>${bnm}${r.src && !unlocked(r.src.b) ? ' <span class="lock">lukittu</span>' : ''}</td><td><b>${Math.ceil(r.m - 1e-9)}</b> <span class="rate">(${f1(r.m)})</span>${big}</td><td>${r.steam || '–'}</td></tr>`; }).join('');
+  $('calcOut').innerHTML = `<div class="tblwrap"><table class="ctbl"><thead><tr><th>Tuote</th><th>Tarve / min</th><th>Rakennus</th><th>Määrä</th><th>Höyry</th></tr></thead><tbody>${body}</tbody></table></div>
+    <p class="rate">Höyryä yhteensä noin ${steamSum} yksikköä, eli ${Math.ceil(steamSum / 100)} kattilaa tai ${Math.ceil(steamSum / 320)} suurkattilaa. Luvut olettavat täyden paineen ja tason 1 koneet; päivitykset nopeuttavat koneita.</p>`;
+}
+function toggleBook(item) {
+  const m = $('book'); if (!item) m.hidden = !m.hidden; else m.hidden = false; if (m.hidden) return;
+  const sel = $('calcItem');
+  if (!sel.options.length) {
+    sel.innerHTML = BOOK_ORDER.filter(k => !ORE_ITEM.includes(k)).map(k => `<option value="${k}">${ITEMS[k].n}</option>`).join('');
+    sel.value = 'messinki';
+    sel.addEventListener('input', renderCalc); $('calcRate').addEventListener('input', renderCalc);
+  }
+  if (item) { sel.value = item; m.querySelector('.panel').scrollTop = 0; }
+  renderCalc();
   const keys = BOOK_ORDER.concat(Object.keys(ITEMS).filter(k => !BOOK_ORDER.includes(k)));
   $('bookList').innerHTML = keys.map(k => { const src = itemSources(k), use = itemUses(k);
-    return `<div class="bk"><h4>${icon(k)}${ITEMS[k].n}</h4>${src.length ? `<div class="ih">Mistä saa</div>${src.map(x => `<div class="il">${x}</div>`).join('')}` : ''}${use.length ? `<div class="ih">Käyttö</div>${use.map(x => `<div class="il">${x}</div>`).join('')}` : ''}</div>`; }).join('');
+    return `<div class="bk"><h4>${icon(k)}${ITEMS[k].n}${ORE_ITEM.includes(k) ? '' : `<button class="sbtn bkcalc" data-a="calcSet" data-v="${k}">Laske ketju</button>`}</h4>${src.length ? `<div class="ih">Mistä saa</div>${src.map(x => `<div class="il">${x}</div>`).join('')}` : ''}${use.length ? `<div class="ih">Käyttö</div>${use.map(x => `<div class="il">${x}</div>`).join('')}` : ''}</div>`; }).join('');
 }
 function toggleStats() { $('stats').hidden = !$('stats').hidden; if (!$('stats').hidden) renderStats(); }
 function series() {
@@ -3166,6 +3263,16 @@ function renderStats() {
 
 // ---- blueprints
 const CFG_KEYS = ['rec', 'filt', 'mode', 'outOn', 'kind', 'pipe', 'opipe'];
+function loadBps() { try { return JSON.parse(localStorage.getItem('hoyrytehdas-bps') || '[]'); } catch (e) { return []; } }
+function storeBps(list) { try { localStorage.setItem('hoyrytehdas-bps', JSON.stringify(list)); } catch (e) { toast('Kaavakirjastoa ei voitu tallentaa tähän selaimeen'); } }
+function renderBps() {
+  const list = loadBps();
+  $('bpList').innerHTML = list.length ? list.map((b, i) => {
+    const cnt = {}; for (const e of b.clip.items) cnt[e.t] = (cnt[e.t] || 0) + 1;
+    const top = Object.keys(cnt).sort((a, c) => cnt[c] - cnt[a]).slice(0, 3).map(t => `${cnt[t]} × ${BUILD[t].n.toLowerCase()}`).join(', ');
+    return `<div class="slot"><div><b>${b.name.replace(/</g, '&lt;')}</b><br><span>${b.clip.w} × ${b.clip.h} ruutua · ${b.clip.items.length} rakennusta · ${top}</span></div><button class="sbtn" data-a="bpUse" data-v="${i}">Käytä</button><button class="sbtn" data-a="bpDel" data-v="${i}">Poista</button></div>`;
+  }).join('') : '<div class="empty">Kirjasto on tyhjä.</div>';
+}
 function copyArea(a, b) {
   const x0 = Math.min(a.x, b.x), x1 = Math.max(a.x, b.x), y0 = Math.min(a.y, b.y), y1 = Math.max(a.y, b.y);
   const cx = Math.floor((x0 + x1) / 2), cy = Math.floor((y0 + y1) / 2), items = [];
@@ -3177,7 +3284,7 @@ function copyArea(a, b) {
   }
   if (!items.length) { toast('Alueella ei ole rakennuksia'); return; }
   S.clip = { w: x1 - x0 + 1, h: y1 - y0 + 1, items };
-  toast(`Kaava tallennettu: ${items.length} rakennusta. Napsauta liittääksesi, R kääntää.`);
+  toast(`Kaava kopioitu: ${items.length} rakennusta. Napsauta liittääksesi, R kääntää. Kaavakirjastoon (L) voit tallentaa sen nimellä.`);
   tool = null; selectTool('paste'); sfx('craft');
 }
 function rotateClip() {
@@ -3258,8 +3365,22 @@ function placeTool(x, y, d) {
   }
   return place(tool, x, y, d, false, true);
 }
-function clickTile(t) {
+let cfgClip = null;
+const CFG_FAMILY = t => (t === 'smelter2' ? 'smelter' : t === 'assembler2' ? 'assembler' : t);
+function clickTile(t, mods) {
   if (!inB(t.x, t.y)) return;
+  const bb = grid[idx(t.x, t.y)];
+  if (bb && mods && (mods.ctrl || mods.shift) && bb.t !== 'hq') {
+    if (mods.ctrl) {
+      const c = {}; for (const k of ['rec', 'filt', 'mode', 'outOn', 'one']) if (bb[k] != null) c[k] = bb[k];
+      if (!Object.keys(c).length) { toast(`${BUILD[bb.t].n}: ei kopioitavia asetuksia`); return; }
+      cfgClip = { t: bb.t, cfg: c }; toast(`Asetukset kopioitu (${BUILD[bb.t].n}). Shift + klikkaus liittää ne samanlaiseen rakennukseen.`); sfx('craft'); return;
+    }
+    if (!cfgClip) { toast('Kopioi ensin asetukset Ctrl + klikkauksella'); return; }
+    if (CFG_FAMILY(cfgClip.t) !== CFG_FAMILY(bb.t)) { toast(`Asetukset on kopioitu rakennuksesta ${BUILD[cfgClip.t].n.toLowerCase()}, eivät sovi tähän`); sfx('error'); return; }
+    applyCfg(bb, cfgClip.cfg); if (cfgClip.cfg.one != null) bb.one = cfgClip.cfg.one;
+    sparks(bb.x + .5, bb.y + .5, 6); sfx('place'); if (selected === bb) renderInfo(); return;
+  }
   const tr = trainAt(t.x, t.y); if (tr) { openInfo(tr); return; }
   const zp = zeps.find(z => Math.hypot(z.fx - (t.x + .5), z.fy - (z._alt || 0) * .6 - (t.y + .5)) < 1.1); if (zp) { openInfo(zp); return; }
   const b = grid[idx(t.x, t.y)];
@@ -3389,7 +3510,7 @@ cv.addEventListener('pointermove', e => {
 function endPointer(e) {
   pointers.delete(e.pointerId);
   if (pinch) { if (pointers.size < 2) pinch = null; drag = null; return; }
-  if (drag && drag.mode === 'pan' && !drag.moved && drag.btn === 0) clickTile(tileAt(e.clientX, e.clientY));
+  if (drag && drag.mode === 'pan' && !drag.moved && drag.btn === 0) clickTile(tileAt(e.clientX, e.clientY), { ctrl: e.ctrlKey || e.metaKey, shift: e.shiftKey });
   if (drag && drag.mode === 'rect') copyArea(drag.a, drag.b);
   if (drag && drag.mode === 'rectRemove') {
     const [x0, x1] = [Math.min(drag.a.x, drag.b.x), Math.max(drag.a.x, drag.b.x)], [y0, y1] = [Math.min(drag.a.y, drag.b.y), Math.max(drag.a.y, drag.b.y)];
@@ -3411,9 +3532,16 @@ cv.addEventListener('wheel', e => {
 
 const keys = new Set();
 window.addEventListener('keydown', e => {
-  if (e.target.closest && e.target.closest('input,textarea')) return;
+  if (e.target.closest && e.target.closest('input,textarea,select')) {
+    if (e.key === 'Escape') { e.target.blur(); for (const id of ['help', 'newg', 'stats', 'book', 'logM', 'bpM']) $(id).hidden = true; }
+    return;
+  }
   const k = e.key.toLowerCase();
-  if (!$('help').hidden || !$('newg').hidden || !$('stats').hidden || !$('book').hidden) { if (k === 'escape' || (k === 'i' && !$('stats').hidden) || (k === 'k' && !$('book').hidden)) { $('help').hidden = true; $('newg').hidden = true; $('stats').hidden = true; $('book').hidden = true; } return; }
+  const modals = ['help', 'newg', 'stats', 'book', 'logM', 'bpM'];
+  if (modals.some(id => !$(id).hidden)) {
+    if (k === 'escape' || (k === 'i' && !$('stats').hidden) || (k === 'k' && !$('book').hidden) || (k === 'o' && !$('logM').hidden) || (k === 'l' && !$('bpM').hidden)) modals.forEach(id => { $(id).hidden = true; });
+    return;
+  }
   keys.add(k);
   if (k === 'r') {
     const b = !tool && hover && inB(hover.x, hover.y) ? grid[idx(hover.x, hover.y)] : null;
@@ -3432,6 +3560,8 @@ window.addEventListener('keydown', e => {
   else if (k === 'h') $('help').hidden = false;
   else if (k === 'i') toggleStats();
   else if (k === 'k') toggleBook();
+  else if (k === 'o') { $('logM').hidden = false; renderLog(); }
+  else if (k === 'l') { $('bpM').hidden = false; renderBps(); }
   else if (k === 'c' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); selectTool('copy'); }
   else if ((k === 'v' || k === 'b') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); if (S.clip) { tool = null; selectTool('paste'); } }
   else if (!e.ctrlKey && !e.metaKey && !e.altKey && CATS.some(c => c.key.toLowerCase() === k)) {
