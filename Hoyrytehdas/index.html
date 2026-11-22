@@ -122,6 +122,12 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 .bar i.done { background: var(--ok); }
 .rate { color: var(--muted); font-size: 11px; }
 .unl { font-size: 12px; color: var(--brass-light); margin-top: 8px; line-height: 1.4; }
+.tut { margin: -2px 0 12px; padding: 10px 12px; border: 1px solid var(--brass); border-radius: 5px; background: linear-gradient(180deg, rgba(234,208,138,.14), rgba(234,208,138,.04)); }
+.tut p { margin: 4px 0 8px; font-size: 14px; line-height: 1.4; color: var(--parchment); }
+#mtip { position: fixed; z-index: 15; pointer-events: none; max-width: 240px; padding: 7px 10px; font-size: 12.5px; line-height: 1.35; background: rgba(16,12,9,.94); border: 1px solid var(--brass-dark); border-radius: 4px; box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+#mtip b { font-family: var(--display); color: var(--brass-light); font-size: 12.5px; letter-spacing: .04em; }
+#mtip .ok { color: var(--ok); } #mtip .warn { color: var(--warn); } #mtip .bad { color: var(--bad); }
+#mtip .mut { color: var(--muted); }
 .hint { margin-top: 10px; padding: 8px 10px; border-left: 3px solid var(--copper); background: rgba(192,109,60,.1); font-size: 13px; line-height: 1.4; }
 
 #tools {
@@ -220,6 +226,11 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 .ach span { font-size: 13px; color: var(--parchment); }
 .ach small { font-size: 11px; color: var(--muted); }
 #saveTxt { width: 100%; min-height: 90px; background: #120e0b; color: var(--parchment); border: 1px solid var(--brass-dark); border-radius: 4px; padding: 8px; font: 12px/1.4 ui-monospace, Menlo, monospace; resize: vertical; user-select: text; -webkit-user-select: text; }
+.set { display: grid; grid-template-columns: max-content 1fr; gap: 10px 16px; align-items: center; font-size: 14px; }
+.set .row2 { display: flex; align-items: center; gap: 10px; }
+.set input[type=range] { width: 100%; accent-color: var(--brass); }
+.set input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--brass); }
+.set select { background: #120e0b; color: var(--parchment); border: 1px solid var(--brass-dark); border-radius: 4px; padding: 4px 6px; font: inherit; }
 .sbtn.on { border-color: var(--brass-light); background: #4a3922; color: var(--brass-light); }
 
 @media (max-width: 760px) {
@@ -273,6 +284,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 <div id="info" class="panel" hidden></div>
 <nav id="tools" class="panel" aria-label="Rakennukset"></nav>
 <div id="tip" hidden></div>
+<div id="mtip" hidden></div>
 <div id="toast"></div>
 
 <div id="help" class="modal" hidden>
@@ -288,6 +300,8 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <kbd>R</kbd><span>Käännä (Shift+R vastapäivään)</span>
       <kbd>Q</kbd><span>Pipetti: osoita rakennusta ja paina Q valitaksesi saman rakennuksen ja suunnan. Uudelleen painettuna tyhjentää valinnan</span>
       <kbd>Esc</kbd><span>Tyhjennä valinta</span>
+      <kbd>Ctrl + Z</kbd><span>Kumoa viimeisin rakentaminen tai purku</span>
+      <kbd>Osoita</kbd><span>Tyhjällä kädellä hiiren alla olevan kohteen tiedot näkyvät leijuvassa ruudussa</span>
       <kbd>Välilyönti</kbd><span>Tauko. Nopeus myös yläpalkista (1×, 2×, 4×)</span>
       <kbd>C / B</kbd><span>Kopioi alue kaavaksi (vedä suorakulmio) / liitä kaava. R kääntää kaavaa</span>
       <kbd>Shift + purku</kbd><span>Pura kokonainen alue vetämällä</span>
@@ -300,7 +314,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
     </div>
     <div class="chain">
       <b>Alkuun:</b> 1) Rakenna <b>Kattila</b> veden viereen ja lisää siihen hiiltä. 2) Vedä <b>Höyryputki</b> kattilasta tehdasalueelle. 3) Aseta <b>Höyrypora</b> malmin päälle putken viereen, nuoli kohti kuljetinta. 4) Ohjaa malmi <b>Sulattoon</b> ja levyt kuljettimella <b>Pääkonttoriin</b>. Kaikki pääkonttoriin tuotu siirtyy varastoosi.<br><br>
-      Kone syöttää tuotteensa nuolen suuntaan. Kuljetin syöttää koneeseen, jota se osoittaa. Putket, kattilat ja vierekkäiset koneet muodostavat höyryverkon. Jos verkon höyry ei riitä, sen koneet hidastuvat. Höyryputken voi vetää kuljettimen tai raiteen alta: rakenna putki suoraan niiden päälle.
+      Kone syöttää tuotteensa nuolen suuntaan. Kuljetin syöttää koneeseen, jota se osoittaa. Putket, kattilat ja vierekkäiset koneet muodostavat höyryverkon. Jos verkon höyry ei riitä, sen koneet hidastuvat. Höyryputken voi vetää kuljettimen tai raiteen alta: rakenna putki suoraan niiden päälle. Jos materiaalit eivät riitä, rakennus jää suunnitelmaksi ja valmistuu itsestään, kun tavarat saapuvat. Puuttuvat hammasrattaat, kuparikelat ja putket valmistetaan tarvittaessa käsin levyistä.
     </div>
     <button class="big" data-a="closeHelp">Aloita</button>
   </div>
@@ -333,6 +347,14 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 <div id="newg" class="modal" hidden>
   <div class="panel">
     <h1>Valikko</h1>
+    <h3>Asetukset</h3>
+    <div class="set">
+      <label for="setVol">Äänitehosteet</label><input type="range" id="setVol" min="0" max="1" step="0.05">
+      <label for="setMusic">Musiikki</label><span class="row2"><input type="checkbox" id="setMusic"><input type="range" id="setMusicVol" min="0" max="1" step="0.05" aria-label="Musiikin voimakkuus"></span>
+      <label for="setNight">Vuorokausirytmi</label><span class="row2"><input type="checkbox" id="setNight"><span class="rate">Yöt ja valaistus</span></span>
+      <label for="setAuto">Automaattitallennus</label><select id="setAuto"><option value="15">15 s välein</option><option value="30">30 s välein</option><option value="60">1 min välein</option><option value="0">Pois</option></select>
+    </div>
+    <div class="acts"><button class="sbtn" data-a="tutAgain">Näytä opastus uudelleen</button></div>
     <h3>Siirrä tallennus</h3>
     <p class="lead">Peli tallentuu tähän selaimeen. Vie tallennus tekstinä, niin voit jatkaa toisella laitteella liittämällä tekstin tähän ja valitsemalla Lataa.</p>
     <label for="saveTxt" class="rate">Tallennusteksti</label>
@@ -520,6 +542,29 @@ function shade(hex, f) {
   return '#' + ((1 << 24) | (m(r) << 16) | (m(g2) << 8) | m(b)).toString(16).slice(1);
 }
 function canAfford(cost, n = 1) { for (const k in cost) if ((S.inv[k] || 0) < cost[k] * n) return false; return true; }
+// Plan hand-crafts that would cover a cost (one level deep: gears, coils, pipes from plates)
+function craftPlan(cost) {
+  const inv = { ...S.inv }, crafts = {};
+  const keys = Object.keys(cost).sort((a, b) => ((inv[b] || 0) >= cost[b]) - ((inv[a] || 0) >= cost[a]));
+  for (const k of keys) {
+    const lack = cost[k] - (inv[k] || 0);
+    if (lack <= 0) { inv[k] -= cost[k]; continue; }
+    const r = RECIPES[k]; if (!r || !r.hand || S.level < r.lvl) return null;
+    const n = Math.ceil(lack / r.k);
+    for (const i in r.in) { if ((inv[i] || 0) < r.in[i] * n) return null; inv[i] -= r.in[i] * n; }
+    inv[k] = (inv[k] || 0) + n * r.k - cost[k]; crafts[k] = n;
+  }
+  return crafts;
+}
+const affordable = cost => canAfford(cost) || !!craftPlan(cost);
+function autoCraft(cost) {
+  if (canAfford(cost)) return true;
+  const plan = craftPlan(cost); if (!plan) return false;
+  const msg = [];
+  for (const k in plan) { const r = RECIPES[k]; pay(r.in, plan[k]); give(k, r.k * plan[k]); for (const i in r.in) stat(i, r.in[i] * plan[k], 'c'); stat(k, r.k * plan[k], 'p'); msg.push(`${r.k * plan[k]} ${ITEMS[k].n.toLowerCase()}`); }
+  if (performance.now() - (autoCraft.t || 0) > 1500) { toast('Valmistettiin käsin: ' + msg.join(', ')); autoCraft.t = performance.now(); }
+  return true;
+}
 function pay(cost, n = 1) { for (const k in cost) { S.inv[k] -= cost[k] * n; if (S.inv[k] <= 0) delete S.inv[k]; } }
 function give(item, n = 1) { if (n > 0) S.inv[item] = (S.inv[item] || 0) + n; }
 const unlocked = t => S.level >= BUILD[t].lvl;
@@ -725,13 +770,13 @@ function placeCheck(t, x, y) {
   const i = idx(x, y);
   if (t === 'zep') {
     if (!grid[i] || grid[i].t !== 'mast') return 'Ilmalaiva asetetaan rahtimastolle';
-    if (!canAfford(BUILD[t].cost)) return 'Materiaalit eivät riitä';
+    if (!affordable(BUILD[t].cost)) return 'Materiaalit eivät riitä';
     return null;
   }
   if (t === 'train') {
     if (!isRail(grid[i])) return 'Veturi asetetaan raiteelle';
     if (trainAt(x, y)) return 'Raiteella on jo veturi';
-    if (!canAfford(BUILD[t].cost)) return 'Materiaalit eivät riitä';
+    if (!affordable(BUILD[t].cost)) return 'Materiaalit eivät riitä';
     return null;
   }
   const sz = BUILD[t].size || 1;
@@ -741,18 +786,52 @@ function placeCheck(t, x, y) {
     if (!inRegion(x + xx, y + yy)) return 'Alue on kartoittamatonta. Laajenna laaksoa maanmittauksella';
     if (terrain[j] === 1) return 'Ei voi rakentaa veteen';
     if (grid[j]) return 'Paikka on varattu';
+    const gj = ghostGrid.get(j); if (gj && gj.t !== t) return 'Paikka on varattu suunnitelmalle';
   }
   if ((t === 'drill' || t === 'drill2') && (!ore[i] || ore[i] === 6)) return ore[i] === 6 ? 'Öljylähteelle tarvitaan öljypumppu' : 'Pora pitää asettaa esiintymän päälle';
   if (t === 'pumpjack' && ore[i] !== 6) return 'Öljypumppu rakennetaan öljylähteen päälle';
   if (isBoiler({ t }) && !nearWater(x, y)) return 'Kattila tarvitsee vettä viereensä';
-  if (!canAfford(BUILD[t].cost)) return 'Materiaalit eivät riitä';
+  if (!affordable(BUILD[t].cost)) return 'Materiaalit eivät riitä';
   return null;
 }
+// Planned buildings: placed as ghosts when materials are short, built automatically later
+let ghostGrid = new Map();
+const ghostAt = (x, y) => ghostGrid.get(idx(x, y));
+function indexGhosts() { ghostGrid = new Map(); for (const gh of S.ghosts || []) { const sz = BUILD[gh.t].size || 1; for (let yy = 0; yy < sz; yy++) for (let xx = 0; xx < sz; xx++) ghostGrid.set(idx(gh.x + xx, gh.y + yy), gh); } }
+function addGhost(t, x, y, d, cfg) {
+  if (t === 'train' || t === 'zep') return false;
+  S.ghosts = S.ghosts || [];
+  if (S.ghosts.length >= 800) return false;
+  const sz = BUILD[t].size || 1;
+  for (let yy = 0; yy < sz; yy++) for (let xx = 0; xx < sz; xx++) { const gx = ghostAt(x + xx, y + yy); if (gx) dropGhost(gx); }
+  const gh = { t, x, y, d, ...(cfg || {}) }; S.ghosts.push(gh); indexGhosts(); return true;
+}
+function dropGhost(gh) { S.ghosts.splice(S.ghosts.indexOf(gh), 1); indexGhosts(); }
+function buildGhosts() {
+  if (!S.ghosts || !S.ghosts.length) return;
+  let built = 0; const wasUndo = undoing; undoing = true;
+  for (const gh of S.ghosts.slice()) {
+    if (built >= 6) break;
+    const keep = ghostGrid; ghostGrid = new Map();
+    const err = placeCheck(gh.t, gh.x, gh.y); ghostGrid = keep;
+    if (err === 'Paikka on varattu' || (err && err !== 'Materiaalit eivät riitä')) { if (err !== 'Materiaalit eivät riitä') dropGhost(gh); continue; }
+    if (err) continue;
+    dropGhost(gh); place(gh.t, gh.x, gh.y, gh.d, true); const b = grid[idx(gh.x, gh.y)]; if (b) { applyCfg(b, gh); puff(gh.x + .5, gh.y + .5, 5, 'rgba(234,208,138,'); }
+    built++;
+  }
+  undoing = wasUndo;
+}
 let lastWarn = 0;
-function place(t, x, y, d, quiet) {
+function place(t, x, y, d, quiet, ghostOk) {
   const err = placeCheck(t, x, y);
+  if (err === 'Materiaalit eivät riitä' && ghostOk && addGhost(t, x, y, d)) {
+    if (performance.now() - (place.gt || 0) > 2500) { toast('Suunniteltu: rakennetaan, kun materiaalit riittävät'); place.gt = performance.now(); }
+    return false;
+  }
   if (err) { if (!quiet && performance.now() - lastWarn > 900) { toast(err); sfx('error'); lastWarn = performance.now(); } return false; }
-  pay(BUILD[t].cost);
+  autoCraft(BUILD[t].cost); pay(BUILD[t].cost);
+  rec({ o: 'p', t, x, y });
+  if (ghostAt(x, y)) dropGhost(ghostAt(x, y));
   sfx(isBoiler({ t }) ? 'steam' : 'place');
   if (t === 'train') { trains.push(makeTrain(x, y)); return true; }
   if (t === 'zep') { const m = grid[idx(x, y)]; zeps.push({ t: 'zep', fx: m.x + 1, fy: m.y + 1, ang: 0, tgt: m.sid, st: m.mode, inv: {}, n: 0, wait: 0, tmr: 0, zid: (S.zid = (S.zid || 0) + 1) }); return true; }
@@ -784,12 +863,29 @@ function contents(b) {
   }
   return out;
 }
+// Undo: actions between pointer down and up form one group
+let hist = [], curGrp = null, undoing = false;
+function rec(op) { if (undoing || !S) return; (curGrp || (curGrp = [])).push(op); }
+function commitGrp() { if (curGrp && curGrp.length) { hist.push(curGrp); if (hist.length > 60) hist.shift(); } curGrp = null; }
+function undo() {
+  commitGrp();
+  const grp = hist.pop(); if (!grp) { toast('Ei kumottavaa'); return; }
+  undoing = true;
+  for (let i = grp.length - 1; i >= 0; i--) {
+    const op = grp[i];
+    if (op.o === 'p') removeAt(op.x, op.y);
+    else if (op.o === 'r') { if (place(op.t, op.x, op.y, op.d, true)) { const b = grid[idx(op.x, op.y)]; if (b && op.cfg) applyCfg(b, op.cfg); } }
+  }
+  undoing = false; toast(`Kumottu ${grp.length} toimintoa`);
+}
 function removeAt(x, y) {
   if (!inB(x, y)) return;
+  if (!grid[idx(x, y)] && ghostAt(x, y)) { dropGhost(ghostAt(x, y)); sfx('remove'); return; }
   const tr = trainAt(x, y);
   if (tr) {
     for (const k in BUILD.train.cost) give(k, BUILD.train.cost[k]);
     for (const k in tr.inv) give(k, tr.inv[k]);
+    rec({ o: 'r', t: 'train', x, y, d: 0 });
     trains.splice(trains.indexOf(tr), 1);
     if (selected === tr) closeInfo();
     sfx('remove');
@@ -798,6 +894,7 @@ function removeAt(x, y) {
   }
   const b = grid[idx(x, y)];
   if (!b || b.t === 'hq') return;
+  rec({ o: 'r', t: b.t, x: b.x, y: b.y, d: b.d, cfg: cfgOf(b) });
   for (const k in BUILD[b.t].cost) give(k, BUILD[b.t].cost[k]);
   if (b.pipe) give('putki', 1);
   if (b.opipe) { give('putki', 1); give('teras', 1); }
@@ -1105,6 +1202,7 @@ function tick(dt) {
   updateZeps(dt);
   updateTrains(dt);
   events();
+  if ((S.time % .5) < dt) buildGhosts();
   const bk = bucket(); bk.sup += supply; bk.dem += demand; bk.n++;
   while (deliv.length && deliv[0].t < S.time - 60) deliv.shift();
 }
@@ -2043,6 +2141,15 @@ function render(fdt) {
     }
   }
 
+  // planned buildings
+  if (S.ghosts && S.ghosts.length) {
+    const pulse = .3 + .12 * Math.sin(performance.now() / 300);
+    for (const gh of S.ghosts) {
+      const sz = BUILD[gh.t].size || 1; if (gh.x + sz < x0 || gh.x > x1 || gh.y + sz < y0 || gh.y > y1) continue;
+      const gb = makeB(gh.t, gh.x, gh.y, gh.d); Object.assign(gb, cfgOf(gh)); drawB(gb, t, pulse);
+      g.strokeStyle = 'rgba(140,196,236,.7)'; g.lineWidth = .04; g.setLineDash([.1, .08]); g.strokeRect(gh.x + .04, gh.y + .04, sz - .08, sz - .08); g.setLineDash([]);
+    }
+  }
   // trains
   for (const tr of trains) {
     if (tr._ra == null) tr._ra = tr.ang;
@@ -2216,6 +2323,7 @@ function render(fdt) {
     g.globalAlpha = 1 - f.life / 1.2; g.fillStyle = '#000'; g.fillText(f.text, sx + 1, sy + 1); g.fillStyle = P.brassL; g.fillText(f.text, sx, sy);
   }
   g.globalAlpha = 1;
+  drawTutArrow();
   if (S.storm && S.storm.end > S.time) {
     const k = Math.max(0, Math.min(1, (S.storm.end - S.time) / 6, (S.time - (S.storm.start ?? 0)) / 6));
     g.fillStyle = `rgba(20,28,40,${.28 * k})`; g.fillRect(0, 0, CW, CH);
@@ -2268,7 +2376,7 @@ function renderTools() {
   const cat = CATS.find(c => c.id === curCat) || CATS[0];
   for (const k of cat.tools) {
     if (!unlocked(k)) continue;
-    h += `<button class="tool${tool === k ? ' on' : ''}${canAfford(BUILD[k].cost) ? '' : ' poor'}" data-tool="${k}" aria-label="${BUILD[k].n}"><span class="k">${BUILD[k].key}</span><img src="${TURL[k]}" alt="">${BUILD[k].n}</button>`;
+    h += `<button class="tool${tool === k ? ' on' : ''}${affordable(BUILD[k].cost) ? '' : ' poor'}" data-tool="${k}" aria-label="${BUILD[k].n}"><span class="k">${BUILD[k].key}</span><img src="${TURL[k]}" alt="">${BUILD[k].n}</button>`;
   }
   h += '<span class="sep"></span>';
   h += `<button class="tool${tool === 'copy' ? ' on' : ''}" data-tool="copy" aria-label="Kopioi alue"><span class="k">C</span><img src="${TURL.copy}" alt="">Kopioi</button>`;
@@ -2322,6 +2430,57 @@ function renderInv() {
 }
 
 function delivRate(item) { let n = 0; for (const d of deliv) if (d.i === item) n++; return n; }
+// ---- guided tutorial
+const HQC = () => { const h = blist.find(b => b.t === 'hq'); return h ? [h.x + 1, h.y + 1] : [W / 2, H / 2]; };
+function nearestTile(pred, maxR = 40) {
+  const [cx, cy] = HQC();
+  for (let r = 1; r <= maxR; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+    if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+    const x = cx + dx, y = cy + dy; if (inB(x, y) && inRegion(x, y) && pred(x, y, idx(x, y))) return { x, y };
+  }
+  return null;
+}
+const bOf = t => blist.find(b => b.t === t);
+const TUT = [
+  { t: 'Louhi hiiltä käsin: klikkaa mustaa hiiliesiintymää tyhjällä kädellä viisi kertaa.', done: () => (S.made?.hiili || 0) >= 5 || !!blist.find(isBoiler), at: () => nearestTile((x, y, i) => ore[i] === 3 && !grid[i]) },
+  { t: 'Valitse Kattila (5) ja rakenna se vesirajaan. Kattila tarvitsee vettä viereensä.', done: () => !!blist.find(isBoiler), at: () => nearestTile((x, y, i) => !terrain[i] && !grid[i] && nearWater(x, y)) },
+  { t: 'Klikkaa kattilaa tyhjällä kädellä ja valitse Lisää 10 hiiltä.', done: () => blist.some(b => isBoiler(b) && (b.fuel > 0 || b.burn > 0)), at: () => blist.find(isBoiler) },
+  { t: 'Valitse Höyrypora (3) ja aseta se rautamalmin (sinertävät kivet) päälle.', done: () => blist.some(b => b.t === 'drill' && ore[idx(b.x, b.y)] === 1), at: () => nearestTile((x, y, i) => ore[i] === 1 && !grid[i]) },
+  { t: 'Vedä Höyryputki (2) kattilasta poraan. Putket, kattilat ja vierekkäiset koneet muodostavat höyryverkon.', done: () => blist.some(b => b.t === 'drill' && netOf(b) && netOf(b).boilers), at: () => bOf('drill') },
+  { t: 'Rakenna Sulatto (4) poran nuolen eteen. Pora syöttää malmin suoraan sulattoon, ja sulatto tarvitsee myös höyryä.', done: () => !!bOf('smelter'), at: () => { const d = bOf('drill'); return d ? { x: d.x + DX[d.d], y: d.y + DY[d.d] } : null; } },
+  { t: 'Johda rautalevyt kuljettimella (1) pääkonttoriin: valitse kuljetin ja vedä hiirellä sulatosta pääkonttorin reunaan.', done: () => (bOf('hq')?.got || 0) > 0, at: () => bOf('hq') },
+  { t: 'Hienoa, tuotantolinja toimii! Rakenna samanlainen linja kuparimalmille ja hae ensimmäinen patentti oikean reunan paneelista.', done: () => S.level >= 1, at: () => nearestTile((x, y, i) => ore[i] === 2 && !grid[i]) },
+];
+let tutTarget = null, tutT = 0;
+function tutorialTick() {
+  if (S.tut == null || S.tut >= TUT.length) { tutTarget = null; return; }
+  let adv = false;
+  while (S.tut < TUT.length && TUT[S.tut].done()) { S.tut++; adv = true; }
+  if (adv) { sfx('craft'); if (S.tut >= TUT.length) toast('Opastus valmis. Loput vinkit näkyvät patenttipaneelissa.'); }
+  tutTarget = S.tut < TUT.length ? TUT[S.tut].at() : null;
+}
+function drawTutArrow() {
+  if (!tutTarget || S.tut >= TUT.length) return;
+  const w = tutTarget.w || 1, tx = tutTarget.x + w / 2, ty = tutTarget.y + (tutTarget.h || 1) / 2;
+  let sx = (tx - cam.x) * cam.z + CW / 2, sy = (ty - cam.y) * cam.z + CH / 2;
+  const tnow = performance.now() / 1000, m = 70;
+  g.save();
+  if (sx > m && sx < CW - m && sy > m + 40 && sy < CH - m) {
+    const r = cam.z * w * .75 + 6 * Math.sin(tnow * 4);
+    g.strokeStyle = 'rgba(255,214,120,.85)'; g.lineWidth = 3; g.setLineDash([8, 6]); g.lineDashOffset = -tnow * 20;
+    g.beginPath(); g.arc(sx, sy, r, 0, 7); g.stroke(); g.setLineDash([]);
+    const ay = sy - r - 14 - Math.abs(Math.sin(tnow * 4)) * 10;
+    g.beginPath(); g.moveTo(sx, ay + 16); g.lineTo(sx - 13, ay - 4); g.lineTo(sx - 5, ay - 4); g.lineTo(sx - 5, ay - 22); g.lineTo(sx + 5, ay - 22); g.lineTo(sx + 5, ay - 4); g.lineTo(sx + 13, ay - 4); g.closePath();
+    g.shadowColor = 'rgba(255,200,90,.9)'; g.shadowBlur = 14; g.fillStyle = '#f0cf7a'; g.fill(); g.shadowBlur = 0; g.lineWidth = 2; g.strokeStyle = '#3a2810'; g.stroke();
+  } else {
+    const ang = Math.atan2(sy - CH / 2, sx - CW / 2);
+    const ex = Math.max(m, Math.min(CW - m, CW / 2 + Math.cos(ang) * CW)), ey = Math.max(m + 40, Math.min(CH - m - 60, CH / 2 + Math.sin(ang) * CH));
+    g.translate(ex, ey); g.rotate(ang);
+    g.beginPath(); g.moveTo(22, 0); g.lineTo(-8, -15); g.lineTo(-2, 0); g.lineTo(-8, 15); g.closePath();
+    g.shadowColor = 'rgba(255,200,90,.9)'; g.shadowBlur = 12; g.fillStyle = '#f0cf7a'; g.fill(); g.shadowBlur = 0; g.lineWidth = 2; g.strokeStyle = '#3a2810'; g.stroke();
+  }
+  g.restore();
+}
 function hint() {
   const has = t => blist.some(b => b.t === t);
   if (!has('boiler')) return 'Rakenna <b>Kattila (5)</b> vesirajaan. Vesiruudut korostuvat, kun kattila on valittuna.';
@@ -2339,6 +2498,9 @@ function hint() {
 }
 function renderGoal() {
   let h = '';
+  if (S.tut != null && S.tut < TUT.length) {
+    h += `<div class="tut"><div class="pat-no">Opastus ${S.tut + 1} / ${TUT.length}</div><p>${TUT[S.tut].t}</p><button class="sbtn" data-a="tutSkip">Ohita opastus</button></div>`;
+  }
   if (S.level >= PATENTS.length) {
     const dk = blist.find(b => b.t === 'dock');
     h = S.ships ? `<p class="pat-name">Aurora on ilmassa</p><p class="pat-desc">Laivastossa ${S.ships} ilmalaivaa. Telakka voi rakentaa lisää.</p>`
@@ -2365,7 +2527,7 @@ function renderGoal() {
     h += `<div class="rate">Palkkio: ${Object.keys(c.rew).map(k => `${c.rew[k]} ${ITEMS[k].n.toLowerCase()}`).join(', ')}. Tilatut tavarat menevät tilaukselle, eivät varastoon.</div>`;
   }
   if (S.storm && S.storm.end > S.time) h += `<div class="hint" style="border-color:#5fa8c9;background:rgba(95,168,201,.1)"><b>Myrsky</b> · ${fmtTime(S.storm.end - S.time)}. Kattilat tuottavat 25 % vähemmän höyryä.</div>`;
-  const hn = hint(); if (hn) h += `<div class="hint">${hn}</div>`;
+  const hn = S.tut != null && S.tut < TUT.length ? null : hint(); if (hn) h += `<div class="hint">${hn}</div>`;
   setHTML($('goalBody'), h);
 }
 function doSurvey() {
@@ -2544,19 +2706,20 @@ function doAction(el) {
       renderInv(); renderGoal(); return;
     }
     case 'rot': if (b && b.t !== 'tunnel') { b.d = (b.d + 1) % 4; } break;
-    case 'del': if (b) removeAt(b.x, b.y); return;
+    case 'del': if (b) { removeAt(b.x, b.y); commitGrp(); } return;
     case 'mode': if (b) b.mode = el.dataset.v; break;
     case 'filt': if (b) b.filt = el.dataset.v || null; break;
     case 'sigOne': if (b) { b.one = el.dataset.v === '1'; for (const tr of trains) if (tr.st === 'move') { tr.st = 'idle'; tr.tmr = 0; } } break;
     case 'upg': if (b) upgrade(b); break;
     case 'delZep': if (b) removeZep(b); return;
     case 'survey': doSurvey(); return;
-    case 'menu': $('newg').hidden = false; $('saveTxt').value = ''; return;
+    case 'menu': $('newg').hidden = false; $('saveTxt').value = ''; syncSettings(); return;
     case 'export': { const txt = btoa(unescape(encodeURIComponent(serialize()))); $('saveTxt').value = txt; $('saveTxt').select();
       if (navigator.clipboard) navigator.clipboard.writeText(txt).then(() => toast('Tallennus kopioitu leikepöydälle'), () => toast('Valitse teksti ja kopioi se itse')); return; }
     case 'import': try { restore(decodeURIComponent(escape(atob($('saveTxt').value.trim())))); $('newg').hidden = true; closeInfo(); renderTools(); renderInv(); renderGoal(); toast('Tallennus ladattu'); save(); } catch (err) { toast('Tekstiä ei voitu lukea tallennukseksi. Tarkista, että kopioit sen kokonaan.'); } return;
     case 'spd': setSpeed(+el.dataset.v); return;
-    case 'mute': muted = !muted; try { localStorage.setItem('hoyrytehdas-mute', muted ? '1' : '0'); } catch (e) {} el.textContent = muted ? 'Ääni pois' : 'Ääni päällä'; if (!muted) sfx('craft'); return;
+    case 'mute': muted = !muted; try { localStorage.setItem('hoyrytehdas-mute', muted ? '1' : '0'); } catch (e) {} el.textContent = muted ? 'Ääni pois' : 'Ääni päällä'; audio(); if (!muted) { sfx('craft'); startMusic(); } return;
+    case 'tutAgain': S.tut = 0; $('newg').hidden = true; renderGoal(); toast('Opastus alkaa alusta'); return;
     case 'alert': jumpAlert(); return;
     case 'rotTool': rot = (rot + 1) % 4; if (selected && selected.t !== 'hq' && selected.t !== 'train') { selected.d = (selected.d + 1) % 4; } return;
     case 'sch': if (b) {
@@ -2566,6 +2729,7 @@ function doAction(el) {
       b.sched = sc.length === all.length ? null : sc;
     } break;
     case 'stats': toggleStats(); return;
+    case 'tutSkip': S.tut = TUT.length; tutTarget = null; renderGoal(); return;
     case 'cat': curCat = el.dataset.v; renderTools(); return;
     case 'fuel': if (b) { const n = Math.min(+el.dataset.n, S.inv.hiili || 0, BUILD[b.t].cap - b.fuel); if (n > 0) { b.fuel += n; pay({ hiili: n }); } } break;
     case 'rec': if (b) setRecipe(b, el.dataset.v); break;
@@ -2687,6 +2851,7 @@ function rotateClip() {
   for (const e of c.items) { const x = e.x; e.x = -e.y; e.y = x; e.d = (e.d + 1) % 4; }
   [c.w, c.h] = [c.h, c.w];
 }
+function cfgOf(e) { const o = {}; for (const k of CFG_KEYS) if (e[k] != null) o[k] = e[k]; return o; }
 function applyCfg(b, e) {
   if (b.t === 'assembler' && e.rec && RECIPES[e.rec] && S.level >= RECIPES[e.rec].lvl) setRecipe(b, e.rec);
   if (b.t === 'splitter') b.filt = e.filt || null;
@@ -2703,7 +2868,7 @@ function pasteAt(hx, hy) {
     const ex = grid[idx(x, y)];
     if (ex) { if (ex.t === e.t) { if (ex.t !== 'tunnel') ex.d = e.d; applyCfg(ex, e); } else blocked++; continue; }
     const err = placeCheck(e.t, x, y);
-    if (err) { if (err === 'Materiaalit eivät riitä') lack++; else blocked++; continue; }
+    if (err) { if (err === 'Materiaalit eivät riitä' && addGhost(e.t, x, y, e.d, cfgOf(e))) lack++; else blocked++; continue; }
     place(e.t, x, y, e.d, true); applyCfg(grid[idx(x, y)], e); placed++;
   }
   for (const e of c.items) if (e.opipe) {
@@ -2716,7 +2881,7 @@ function pasteAt(hx, hy) {
   }
   relinkTunnels(); netsDirty = true; railDirty = true;
   let msg = `Rakennettu ${placed}`;
-  if (lack) msg += `, materiaalit eivät riittäneet ${lack}`;
+  if (lack) msg += `, ${lack} suunniteltu (rakennetaan, kun materiaalit riittävät)`;
   if (blocked) msg += `, ${blocked} paikkaa varattu`;
   toast(msg);
 }
@@ -2757,7 +2922,7 @@ function placeTool(x, y, d) {
     const items = ex.items, hadPipe = ex.pipe; removeAt(x, y); place(tool, x, y, d, true); const nb = grid[idx(x, y)];
     if (nb && hadPipe && canAfford(BUILD.pipe.cost)) { pay(BUILD.pipe.cost); nb.pipe = true; } if (nb) { nb.items = []; for (const it of items) { S.inv[it.i]--; if (S.inv[it.i] <= 0) delete S.inv[it.i]; nb.items.push(it); } } return true;
   }
-  return place(tool, x, y, d);
+  return place(tool, x, y, d, false, true);
 }
 function clickTile(t) {
   if (!inB(t.x, t.y)) return;
@@ -2777,6 +2942,7 @@ function clickTile(t) {
 
 cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('pointerdown', e => {
+  commitGrp();
   cv.setPointerCapture(e.pointerId);
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   $('tip').hidden = true;
@@ -2794,7 +2960,52 @@ cv.addEventListener('pointerdown', e => {
   else if (tool === 'paste') { drag.mode = 'none'; pasteAt(t.x, t.y); }
   else if (e.button === 0 && tool) { drag.mode = 'place'; placeTool(t.x, t.y, rot); }
 });
+let mouseXY = null, hoverSince = 0, hoverKey = '';
+function mapTipHTML() {
+  if (!hover || !inB(hover.x, hover.y)) return null;
+  const i = idx(hover.x, hover.y), st = b => b && b.st && STATUS[b.st] ? `<div class="${STATUS[b.st][1]}">${STATUS[b.st][0]}</div>` : '';
+  const tr = trainAt(hover.x, hover.y); if (tr) return `<b>Höyryveturi</b>${st(tr)}<div class="mut">Lasti ${tr.n} / ${BUILD.train.cap}</div>`;
+  const b = grid[i];
+  if (b) {
+    const name = b.t === 'hq' ? 'Pääkonttori' : b.t === 'station' ? stationName(b.sid) : b.t === 'mast' ? mastName(b.sid) : BUILD[b.t].n;
+    let extra = '';
+    if (b.t === 'drill' || b.t === 'drill2') { const o = ORE_ITEM[ore[idx(b.x, b.y)]]; if (o) extra = `Louhii: ${ITEMS[o].n}`; }
+    else if (b.t === 'smelter' || b.t === 'smelter2') extra = b.inT ? `${ITEMS[b.inT].n} ${b.inN} → ${SMELT[b.inT] ? ITEMS[SMELT[b.inT].out].n : ''}` : 'Ei syötettä';
+    else if (b.t === 'assembler' || b.t === 'assembler2') extra = b.rec ? `Resepti: ${ITEMS[b.rec].n}` : 'Ei reseptiä';
+    else if (isBoiler(b)) extra = b.t === 'oilboiler' ? `Öljyä ${Math.round(onet(b)?.amt || 0)}` : `Hiiltä ${b.fuel} / ${BUILD[b.t].cap}`;
+    else if (b.n != null && (b.t === 'chest' || b.t === 'station' || b.t === 'mast')) extra = `Tavaroita ${b.n}`;
+    else if (b.items) extra = b.items.length ? b.items.slice(0, 4).map(it => ITEMS[it.i].n).join(', ') : 'Tyhjä';
+    else if (b.t === 'pipe') { const n = netOf(b); extra = n ? `Höyry ${Math.round(n.last)} / ${Math.round(n.supply)}` : ''; }
+    else if (b.t === 'oilpipe') { const n = onet(b); extra = n ? `Öljyä ${Math.round(n.amt)} / ${n.cap}` : ''; }
+    if (b.up > 1) extra += ` · taso ${b.up}`;
+    return `<b>${name}</b>${st(b)}${extra ? `<div class="mut">${extra}</div>` : ''}<div class="mut">Klikkaa avataksesi</div>`;
+  }
+  const gh = ghostAt(hover.x, hover.y);
+  if (gh) { const c = BUILD[gh.t].cost, miss = Object.keys(c).filter(k => (S.inv[k] || 0) < c[k]).map(k => `${c[k] - (S.inv[k] || 0)} ${ITEMS[k].n.toLowerCase()}`); return `<b>${BUILD[gh.t].n}</b><div class="warn">Suunniteltu</div><div class="mut">${miss.length ? 'Puuttuu: ' + miss.join(', ') : 'Odottaa rakentamista'}</div>`; }
+  if (!inRegion(hover.x, hover.y)) return '<b>Kartoittamaton</b><div class="mut">Laajenna laaksoa maanmittauksella</div>';
+  const o = ore[i];
+  if (o === 6) return '<b>Öljylähde</b><div class="mut">Rakenna päälle öljypumppu</div>';
+  if (o) return `<b>${ITEMS[ORE_ITEM[o]].n}</b><div class="mut">Klikkaa louhiaksesi käsin tai aseta pora päälle</div>`;
+  if (terrain[i] === 1) return '<b>Vesi</b><div class="mut">Kattilat rakennetaan veden viereen</div>';
+  return null;
+}
+function renderMapTip() {
+  const el = $('mtip');
+  if (!mouseXY || drag || tool || performance.now() - hoverSince < 350 || !$('help').hidden) { el.hidden = true; return; }
+  const h = mapTipHTML(); if (!h) { el.hidden = true; return; }
+  if (el._h !== h) { el.innerHTML = h; el._h = h; }
+  el.hidden = false;
+  const r = el.getBoundingClientRect();
+  el.style.left = Math.min(innerWidth - r.width - 8, mouseXY[0] + 18) + 'px';
+  el.style.top = Math.min(innerHeight - r.height - 8, mouseXY[1] + 18) + 'px';
+}
+cv.addEventListener('pointerleave', () => { mouseXY = null; $('mtip').hidden = true; });
 cv.addEventListener('pointermove', e => {
+  if (e.pointerType === 'mouse') {
+    mouseXY = [e.clientX, e.clientY];
+    const hk = tileAt(e.clientX, e.clientY); const key = hk.x + ',' + hk.y;
+    if (key !== hoverKey) { hoverKey = key; hoverSince = performance.now(); $('mtip').hidden = true; }
+  }
   if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (pinch && pointers.size === 2) {
     const [a, b] = [...pointers.values()];
@@ -2843,6 +3054,7 @@ function endPointer(e) {
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { removeAt(x, y); }
   }
   drag = null;
+  commitGrp();
 }
 cv.addEventListener('pointerup', endPointer);
 cv.addEventListener('pointercancel', endPointer);
@@ -2869,6 +3081,7 @@ window.addEventListener('keydown', e => {
   } else if (k === 'q' && !tool && hover && inB(hover.x, hover.y) && grid[idx(hover.x, hover.y)] && grid[idx(hover.x, hover.y)].t !== 'hq') {
     const b = grid[idx(hover.x, hover.y)];
     if (unlocked(b.t)) { rot = b.d; selectTool(b.t); }
+  } else if (k === 'z' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); undo(); return;
   } else if (k === 'q' || k === 'escape') { tool = null; closeInfo(); renderTools(); cv.style.cursor = 'default'; }
   else if (k === ' ') setSpeed(speed ? 0 : (lastSpeed || 1));
   else if (k === 'm') $('mini').hidden = !$('mini').hidden;
@@ -2895,12 +3108,14 @@ function restore(str) {
   grid = new Array(W * H).fill(null); blist = o.b; trains = o.tr || []; zeps = o.zp || [];
   for (const b of blist) occupy(b, b);
   cam.x = o.cam.x; cam.y = o.cam.y; cam.z = o.cam.z;
-  netsDirty = true; stats = new Map(); deliv = [];
+  netsDirty = true; stats = new Map(); deliv = []; hist = []; indexGhosts();
+  if (S.tut == null) S.tut = S.level > 0 || blist.length > 6 ? 99 : 0;
   if (o.v === 1) { give('putki', 80); setTimeout(() => toast('Päivitys: höyry kulkee nyt putkissa. Sait 80 putkea – yhdistä koneet kattiloihin Höyryputkella (2).'), 600); }
 }
 function save() { try { localStorage.setItem(SAVE_KEY, serialize()); return true; } catch (e) { return false; } }
 function newGame() {
-  S = { seed: (Math.random() * 1e9) | 0, inv: { rautalevy: 80, tiili: 50, kuparilevy: 20, hiili: 30, putki: 30 }, level: 0, time: 0, won: false, sid: 0, region: 32 };
+  S = { seed: (Math.random() * 1e9) | 0, inv: { rautalevy: 80, tiili: 50, kuparilevy: 20, hiili: 30, putki: 30 }, level: 0, time: 0, won: false, sid: 0, region: 32, tut: 0, ghosts: [] };
+  hist = []; ghostGrid = new Map();
   genMap(S.seed); miniBase = null;
   grid = new Array(W * H).fill(null); blist = []; trains = []; zeps = [];
   const hq = makeB('hq', W / 2 - 1, H / 2 - 1, 0); blist.push(hq); occupy(hq, hq);
@@ -2971,11 +3186,74 @@ miniC.addEventListener('pointerup', () => { miniC._drag = false; });
 
 let actx = null, muted = false, lastSfx = {};
 try { muted = localStorage.getItem('hoyrytehdas-mute') === '1'; } catch (e) {}
+const PREF = { vol: .8, music: true, musicVol: .5, autosave: 30 };
+try { Object.assign(PREF, JSON.parse(localStorage.getItem('hoyrytehdas-prefs') || '{}')); } catch (e) {}
+function savePrefs() { try { localStorage.setItem('hoyrytehdas-prefs', JSON.stringify(PREF)); } catch (e) {} }
+let masterG = null, musicG = null;
+function audio() {
+  try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (e) { return null; }
+  if (!masterG) { masterG = actx.createGain(); masterG.connect(actx.destination); musicG = actx.createGain(); musicG.connect(masterG); }
+  masterG.gain.value = muted ? 0 : PREF.vol;
+  musicG.gain.value = PREF.music ? PREF.musicVol * .5 : 0;
+  return actx;
+}
+// ---- procedural clockwork music: pads, bass, music box and a soft escapement tick
+const CHORDS = [[50, 57, 62, 65], [46, 53, 58, 62], [41, 53, 57, 60], [48, 55, 60, 64]];
+const SCALE = [62, 64, 65, 67, 69, 70, 72, 74, 76, 77, 79, 81];
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+let musNext = 0, musBeat = 0, musTimer = null;
+function musicNote(f, t0, dur, type, vol, cutoff) {
+  const o = actx.createOscillator(), gg = actx.createGain(), lp = actx.createBiquadFilter();
+  o.type = type; o.frequency.value = f; lp.type = 'lowpass'; lp.frequency.value = cutoff || 1800;
+  gg.gain.setValueAtTime(0.0001, t0);
+  if (type === 'sine' && dur < 2) { gg.gain.exponentialRampToValueAtTime(vol, t0 + .01); gg.gain.exponentialRampToValueAtTime(0.0001, t0 + dur); }
+  else { gg.gain.linearRampToValueAtTime(vol, t0 + dur * .35); gg.gain.linearRampToValueAtTime(0.0001, t0 + dur); }
+  o.connect(lp); lp.connect(gg); gg.connect(musicG); o.start(t0); o.stop(t0 + dur + .05);
+}
+function musicTick() {
+  if (!actx || !PREF.music || muted) return;
+  const beat = 60 / 66;
+  if (musNext < actx.currentTime) musNext = actx.currentTime + .1;
+  while (musNext < actx.currentTime + .6) {
+    const t0 = musNext, bar = Math.floor(musBeat / 4) % CHORDS.length, ch = CHORDS[bar], inBar = musBeat % 4;
+    if (inBar === 0) {
+      for (const m of ch.slice(1)) musicNote(mtof(m), t0, beat * 4.2, 'triangle', .035, 900);
+      musicNote(mtof(ch[0] - 12), t0, beat * 1.8, 'sine', .09, 400);
+    }
+    if (inBar === 2) musicNote(mtof(ch[0] - 12), t0, beat * 1.6, 'sine', .06, 400);
+    const night = (typeof nightness === 'number' ? nightness : 0);
+    for (const sub of [0, .5]) {
+      if (Math.random() < .32 * (1 - night * .6)) {
+        const pool = SCALE.filter(m => ch.some(c => (m - c) % 12 === 0) || Math.random() < .25);
+        const m = pool[Math.random() * pool.length | 0];
+        musicNote(mtof(m), t0 + sub * beat, 1.4, 'sine', .05, 4000); musicNote(mtof(m) * 2, t0 + sub * beat, .6, 'sine', .012, 6000);
+      }
+    }
+    // escapement tick
+    const n = Math.ceil(actx.sampleRate * .02), buf = actx.createBuffer(1, n, actx.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n) ** 3;
+    const src = actx.createBufferSource(), hp = actx.createBiquadFilter(), gg = actx.createGain();
+    src.buffer = buf; hp.type = 'highpass'; hp.frequency.value = inBar % 2 ? 3500 : 2600; gg.gain.value = .05;
+    src.connect(hp); hp.connect(gg); gg.connect(musicG); src.start(t0);
+    musNext += beat; musBeat++;
+  }
+}
+function syncSettings() {
+  $('setVol').value = PREF.vol; $('setMusic').checked = PREF.music; $('setMusicVol').value = PREF.musicVol;
+  $('setNight').checked = !S.noNight; $('setAuto').value = String(PREF.autosave);
+}
+for (const id of ['setVol', 'setMusic', 'setMusicVol', 'setNight', 'setAuto']) $(id).addEventListener('input', () => {
+  PREF.vol = +$('setVol').value; PREF.music = $('setMusic').checked; PREF.musicVol = +$('setMusicVol').value; PREF.autosave = +$('setAuto').value;
+  S.noNight = !$('setNight').checked; savePrefs(); audio(); if (PREF.music) startMusic();
+});
+function startMusic() { if (!audio()) return; if (!musTimer) musTimer = setInterval(musicTick, 200); }
+window.addEventListener('pointerdown', startMusic, { once: true });
+window.addEventListener('keydown', startMusic, { once: true });
 function sfx(kind) {
   if (muted) return;
   const now = performance.now(); if (now - (lastSfx[kind] || 0) < 45) return; lastSfx[kind] = now;
-  try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch (e) { return; }
-  const t = actx.currentTime, out = actx.destination;
+  if (!audio()) return;
+  const t = actx.currentTime, out = masterG;
   const env = (node, vol, delay, dur) => { const gg = actx.createGain(); gg.gain.setValueAtTime(0.0001, t + delay); gg.gain.exponentialRampToValueAtTime(vol, t + delay + 0.008); gg.gain.exponentialRampToValueAtTime(0.0001, t + delay + dur); node.connect(gg); gg.connect(out); };
   const tone = (f, dur, type, vol, delay = 0, f2) => { const o = actx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f, t + delay); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + delay + dur); env(o, vol, delay, dur); o.start(t + delay); o.stop(t + delay + dur + .03); };
   const noise = (dur, vol, freq, delay = 0) => {
@@ -3060,10 +3338,11 @@ function loop(now) {
     const m = Math.floor(S.time / 60); $('clock').textContent = `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')} · ${dayLabel()}`;
     renderInv(); renderGoal(); renderInfo(); renderTools(); renderAlerts();
     if ((achT = (achT || 0) + 1) % 4 === 0) checkAch();
+    tutorialTick(); renderMapTip();
     if ((miniT = (miniT || 0) + 1) % 2 === 0) drawMini();
     if (!$('stats').hidden && (statT = (statT || 0) + 1) % 4 === 0) renderStats();
   }
-  if (saveT > 30) { saveT = 0; save(); }
+  if (PREF.autosave && saveT > PREF.autosave) { saveT = 0; save(); }
   requestAnimationFrame(loop);
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
