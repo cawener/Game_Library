@@ -477,7 +477,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.20';
+const VERSION = '0.21';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -975,15 +975,21 @@ function placeCheck(t, x, y) {
     if (!inB(x + xx, y + yy)) return 'Kartan ulkopuolella';
     const j = idx(x + xx, y + yy);
     if (!inRegion(x + xx, y + yy)) return 'Alue on kartoittamatonta. Laajenna laaksoa maanmittauksella';
-    if (terrain[j] === 1) return 'Ei voi rakentaa veteen';
+    if (terrain[j] === 1) { if (!BRIDGE[t]) return 'Ei voi rakentaa veteen. Kuljettimet, putket ja raiteet voi rakentaa matalaan veteen siltana'; if ((depth[j] || 5) > 2) return 'Liian syvää siltaa varten. Käytä maanalaista kuljetinta'; }
     if (grid[j]) return 'Paikka on varattu';
     const gj = ghostGrid.get(j); if (gj && gj.t !== t) return 'Paikka on varattu suunnitelmalle';
   }
   if ((t === 'drill' || t === 'drill2') && (!ore[i] || ore[i] === 6)) return ore[i] === 6 ? 'Öljylähteelle tarvitaan öljypumppu' : 'Pora pitää asettaa esiintymän päälle';
   if (t === 'pumpjack' && ore[i] !== 6) return 'Öljypumppu rakennetaan öljylähteen päälle';
   if (isBoiler({ t }) && !nearWater(x, y)) return 'Kattila tarvitsee vettä viereensä';
-  if (!affordable(BUILD[t].cost)) return 'Materiaalit eivät riitä';
+  if (!affordable(costAt(t, x, y))) return terrain[i] === 1 && BRIDGE[t] ? 'Materiaalit eivät riitä: silta vaatii lisäksi 2 lankkua' : 'Materiaalit eivät riitä';
   return null;
+}
+const BRIDGE = { belt: 1, fastbelt: 1, pipe: 1, oilpipe: 1, rail: 1, signal: 1 };
+const BRIDGE_COST = { lankku: 2 };
+function costAt(t, x, y) {
+  if (!BRIDGE[t] || !inB(x, y) || terrain[idx(x, y)] !== 1) return BUILD[t].cost;
+  const c = { ...BUILD[t].cost }; for (const k in BRIDGE_COST) c[k] = (c[k] || 0) + BRIDGE_COST[k]; return c;
 }
 // Planned buildings: placed as ghosts when materials are short, built automatically later
 let ghostGrid = new Map();
@@ -1020,7 +1026,7 @@ function place(t, x, y, d, quiet, ghostOk) {
     return false;
   }
   if (err) { if (!quiet && performance.now() - lastWarn > 900) { toast(err); sfx('error'); lastWarn = performance.now(); } return false; }
-  autoCraft(BUILD[t].cost); pay(BUILD[t].cost);
+  const cst = costAt(t, x, y); autoCraft(cst); pay(cst);
   if (t !== 'train' && t !== 'zep') { const sz = BUILD[t].size || 1; let got = 0; for (let yy = 0; yy < sz; yy++) for (let xx = 0; xx < sz; xx++) got += fellAt(x + xx, y + yy, 2); if (got) sfx('chop'); }
   rec({ o: 'p', t, x, y });
   if (ghostAt(x, y)) dropGhost(ghostAt(x, y));
@@ -1028,6 +1034,7 @@ function place(t, x, y, d, quiet, ghostOk) {
   if (t === 'train') { trains.push(makeTrain(x, y)); return true; }
   if (t === 'zep') { const m = grid[idx(x, y)]; zeps.push({ t: 'zep', fx: m.x + 1, fy: m.y + 1, ang: 0, tgt: m.sid, st: m.mode, inv: {}, n: 0, wait: 0, tmr: 0, zid: (S.zid = (S.zid || 0) + 1) }); return true; }
   const b = makeB(t, x, y, d);
+  if (BRIDGE[t] && terrain[idx(x, y)] === 1) b.br = 1;
   if (t === 'station') b.sid = nextSid();
   if (t === 'mast') b.sid = (S.mid = (S.mid || 0) + 1);
   if (t === 'tunnel') b.kind = tunnelKind(x, y, d);
@@ -1089,6 +1096,7 @@ function removeAt(x, y) {
   if (!b || b.t === 'hq') return;
   rec({ o: 'r', t: b.t, x: b.x, y: b.y, d: b.d, cfg: cfgOf(b) });
   for (const k in BUILD[b.t].cost) give(k, BUILD[b.t].cost[k]);
+  if (b.br) for (const k in BRIDGE_COST) give(k, BRIDGE_COST[k]);
   if (b.pipe) give('putki', 1);
   if (b.opipe) { give('putki', 1); give('teras', 1); }
   if (b.t === 'mast') for (const z of zeps.slice()) if (z.tgt === b.sid && z.st !== 'fly') removeZep(z);
@@ -1180,6 +1188,7 @@ function rebuildOil() {
 function oilBegin() { for (const n of oilNets) { n.amt = 0; for (const m of n.members) n.amt += m.oil || 0; n.amt = Math.min(n.amt, n.cap); } }
 function oilEnd() { for (const n of oilNets) for (const m of n.members) m.oil = n.cap ? n.amt * oilCap(m) / n.cap : 0; }
 const netOf = b => (b && b.net != null ? nets[b.net] : null);
+const RATE_SHOW = { drill: 1, drill2: 1, smelter: 1, smelter2: 1, assembler: 1, assembler2: 1, saw: 1, refinery: 1, lumber: 1 };
 const UPGRADABLE = { inserter: 1, drill: 1, drill2: 1, smelter: 1, assembler: 1, pumpjack: 1, saw: 1, lumber: 1 };
 const mulOf = b => UP_SPEED[upl(b)] * (BUILD[b.t].mul || 1);
 const UP_SPEED = [1, 1, 1.5, 2.1], UP_STEAM = [1, 1, 1.35, 1.8];
@@ -1218,6 +1227,8 @@ function bucket() {
   if (!bk) { bk = { p: {}, c: {}, sup: 0, dem: 0, n: 0 }; stats.set(id, bk); for (const k of stats.keys()) if (k < id - 60) stats.delete(k); }
   return bk;
 }
+function rateMark(b, k) { if (b._t0 == null) b._t0 = S.time; const q = b._rq || (b._rq = []); q.push(S.time, k); while (q.length && q[0] < S.time - 60) q.splice(0, 2); }
+function rateOfB(b) { const q = b._rq; if (!q || b._t0 == null) return 0; let n = 0; for (let i = 0; i < q.length; i += 2) if (q[i] >= S.time - 60) n += q[i + 1]; return n * 60 / Math.max(10, Math.min(60, S.time - b._t0)); }
 function stat(item, n, kind) { const m = bucket()[kind]; m[item] = (m[item] || 0) + n; if (kind === 'p') { S.made = S.made || {}; S.made[item] = (S.made[item] || 0) + n; } }
 function rateOf(item, kind) {
   const cur = Math.floor(S.time / 10); let n = 0;
@@ -1293,7 +1304,7 @@ const UPD = {
     if (ti < 0) { b.st = 'depleted'; b.act = 0; return; }
     const s = steam(b); setRun(b, s);
     b.prog += dt * b.act * BUILD[b.t].rate * UP_SPEED[upl(b)];
-    if (b.prog >= 1) { b.prog -= 1; const o = ORE_ITEM[ore[ti]]; stat(o, 1, 'p'); mineTile(ti, 1); if (!pushFront(b, o)) b.out = o; }
+    if (b.prog >= 1) { b.prog -= 1; const o = ORE_ITEM[ore[ti]]; stat(o, 1, 'p'); rateMark(b, 1); mineTile(ti, 1); if (!pushFront(b, o)) b.out = o; }
   },
   smelter(b, dt) {
     if (b.outN > 0 && pushFront(b, b.outT)) b.outN--;
@@ -1304,7 +1315,7 @@ const UPD = {
     if (b.cur) {
       const r = tableOf(b)[b.cur], s = steam(b); setRun(b, s);
       b.prog += dt * b.act * mulOf(b) / r.t;
-      if (b.prog >= 1) { b.outT = r.out; b.outN += r.k; b.cur = null; b.prog = 0; stat(r.out, r.k, 'p'); }
+      if (b.prog >= 1) { b.outT = r.out; b.outN += r.k; b.cur = null; b.prog = 0; stat(r.out, r.k, 'p'); rateMark(b, r.k); }
     } else { b.act = 0; b.st = b.outN >= 5 ? 'blocked' : 'idle'; }
   },
   assembler(b, dt) {
@@ -1318,7 +1329,7 @@ const UPD = {
     if (b.cur) {
       const s = steam(b); setRun(b, s);
       b.prog += dt * b.act * mulOf(b) / r.t;
-      if (b.prog >= 1) { b.outN += r.k; b.cur = false; b.prog = 0; stat(b.rec, r.k, 'p'); }
+      if (b.prog >= 1) { b.outN += r.k; b.cur = false; b.prog = 0; stat(b.rec, r.k, 'p'); rateMark(b, r.k); }
     } else { b.act = 0; b.st = b.outN >= r.k * 3 ? 'blocked' : 'idle'; }
   },
   chest(b, dt) { if (b.outOn) outFront(b, dt, 0.12); },
@@ -1371,7 +1382,7 @@ UPD.lumber = (b, dt) => {
   b.prog += dt * b.act * UP_SPEED[upl(b)] / 5;
   if (b.prog >= 1) {
     b.prog = 0; const { x, y } = b._tgt;
-    if (tree[idx(x, y)]) { fellAt(x, y, 0); b.outN += 2; stat('puu', 2, 'p'); (S.regrow = S.regrow || []).push({ i: idx(x, y), at: S.time + 120 }); }
+    if (tree[idx(x, y)]) { fellAt(x, y, 0); b.outN += 2; stat('puu', 2, 'p'); rateMark(b, 2); (S.regrow = S.regrow || []).push({ i: idx(x, y), at: S.time + 120 }); }
     b._tgt = undefined;
   }
 };
@@ -1401,7 +1412,7 @@ UPD.refinery = (b, dt) => {
   if (b.outN > 0 && pushFront(b, 'voiteluoljy')) b.outN--;
   const n = onet(b);
   if (!b.cur) { if (n && n.amt >= 20 && b.outN < 8) { n.amt -= 20; stat('raakaoljy', 20, 'c'); b.cur = true; b.prog = 0; } }
-  if (b.cur) { const s = steam(b); setRun(b, s); b.prog += dt * b.act / 3; if (b.prog >= 1) { b.cur = false; b.prog = 0; b.outN += 2; stat('voiteluoljy', 2, 'p'); } }
+  if (b.cur) { const s = steam(b); setRun(b, s); b.prog += dt * b.act / 3; if (b.prog >= 1) { b.cur = false; b.prog = 0; b.outN += 2; stat('voiteluoljy', 2, 'p'); rateMark(b, 2); } }
   else { b.act = 0; b.st = b.outN >= 8 ? 'blocked' : 'nooil'; }
 };
 UPD.mast = (b, dt) => { if (b.mode === 'unload') outFront(b, dt, 0.05); };
@@ -1647,6 +1658,7 @@ function updateTrains(dt) {
         if (d > 1e-6) tr.ang = Math.atan2(dy, dx);
         if (d <= dist) { tr.fx = nx + .5; tr.fy = ny + .5; tr.x = nx; tr.y = ny; tr.path.shift(); dist -= d; }
         else { tr.fx += dx / d * dist; tr.fy += dy / d * dist; dist = 0; }
+        trailPush(tr);
       }
       if (tr.st === 'move' && !tr.path.length) {
         const s2 = grid[idx(tr.x, tr.y)];
@@ -2268,6 +2280,36 @@ function railBase(b) {
   g.fillStyle = '#b8c0c8';
   for (const d of arms) { g.save(); g.rotate(d * Math.PI / 2); g.fillRect(-.24, -.5, .06, .56); g.fillRect(.18, -.5, .06, .56); g.restore(); }
 }
+function trailPush(tr) {
+  const tl = tr._tl || (tr._tl = []), last = tl[tl.length - 1];
+  if (!last || Math.hypot(last[0] - tr.fx, last[1] - tr.fy) > .08) { tl.push([tr.fx, tr.fy]); if (tl.length > 60) tl.shift(); }
+}
+// point at a given distance back along the train's trail
+function trailAt(tr, back) {
+  const tl = tr._tl; if (!tl || !tl.length) return null;
+  let px = tr.fx, py = tr.fy, acc = 0;
+  for (let k = tl.length - 1; k >= 0; k--) {
+    const [qx, qy] = tl[k], seg = Math.hypot(px - qx, py - qy);
+    if (acc + seg >= back) { const f = (back - acc) / (seg || 1); return [px + (qx - px) * f, py + (qy - py) * f]; }
+    acc += seg; px = qx; py = qy;
+  }
+  return null;
+}
+function drawWagons(tr) {
+  const fill = tr.n / BUILD.train.cap;
+  for (let w = 0; w < 2; w++) {
+    const a = trailAt(tr, .95 + w * 1.05), b2 = trailAt(tr, 1.35 + w * 1.05); if (!a || !b2) continue;
+    const cx = (a[0] + b2[0]) / 2, cy = (a[1] + b2[1]) / 2, ang = Math.atan2(a[1] - b2[1], a[0] - b2[0]);
+    g.save(); g.translate(cx, cy); g.rotate(ang);
+    g.fillStyle = 'rgba(0,0,0,.3)'; g.fillRect(-.42, -.22, .9, .5);
+    rr(-.45, -.27, .9, .54, .05); g.fillStyle = '#5a3a24'; g.fill(); g.lineWidth = .03; g.strokeStyle = P.soot; g.stroke();
+    g.fillStyle = '#3a2618'; g.fillRect(-.4, -.22, .8, .44);
+    const boxes = Math.round(Math.max(0, Math.min(1, fill * 2 - w)) * 4);
+    for (let k = 0; k < boxes; k++) { const bx = -.36 + (k % 2) * .38, by = -.18 + Math.floor(k / 2) * .19; g.fillStyle = k % 2 ? P.wood : '#9a6a3c'; g.fillRect(bx, by, .32, .16); g.strokeStyle = P.woodD; g.lineWidth = .015; g.strokeRect(bx, by, .32, .16); }
+    g.fillStyle = P.ironD; g.fillRect(.45, -.04, .08, .08);
+    g.restore();
+  }
+}
 function drawTrain(tr, t, alpha) {
   g.save(); g.translate(tr.fx, tr.fy); g.rotate(tr._ra ?? tr.ang); if (alpha < 1) g.globalAlpha = alpha;
   g.fillStyle = 'rgba(0,0,0,.3)'; rr(-.56, -.26, 1.18, .58, .1); g.fill();
@@ -2349,7 +2391,7 @@ function bchunkSig(cx, cy) {
     const b = grid[idx(tx, ty)];
     if (!b || IN_BCHUNK_SKIP[b.t]) { h = (Math.imul(h, 31) + 7) | 0; continue; }
     if (b.items && b.x === tx && b.y === ty) b._cv = beltCurve(b);
-    const v = (TCODE[b.t] || 0) * 131 + b.d * 17 + (b._cv === 'L' ? 5 : b._cv === 'R' ? 9 : 0) + (b.x === tx && b.y === ty ? 11 : 0) + (b.outOn ? 13 : 0) + (b.mode === 'unload' ? 19 : 0) + (b.pipe ? 23 : 0) + (b.opipe ? 29 : 0) + (b.kind === 'out' ? 37 : 0) + (b.up || 0) * 41;
+    const v = (b.br ? 3 : 0) + (TCODE[b.t] || 0) * 131 + b.d * 17 + (b._cv === 'L' ? 5 : b._cv === 'R' ? 9 : 0) + (b.x === tx && b.y === ty ? 11 : 0) + (b.outOn ? 13 : 0) + (b.mode === 'unload' ? 19 : 0) + (b.pipe ? 23 : 0) + (b.opipe ? 29 : 0) + (b.kind === 'out' ? 37 : 0) + (b.up || 0) * 41;
     h = (Math.imul(h, 31) + v) | 0;
   }
   return h;
@@ -2373,6 +2415,7 @@ function bchunkAt(cx, cy, px) {
   for (const b of list) if (!NO_SHADOW[b.t] && !isBelt(b) && !isRail(b)) { const w = b.w || 1; x.rect(b.x + .05 + .08, b.y + .05 + .1, w - .1, w - .1); }
   x.fill();
   list.sort((a, b) => (isRail(b) || isBelt(b)) - (isRail(a) || isBelt(a)));
+  for (const b of list) if (b.br) drawDeck(b);
   for (const b of list) {
     const w = b.w || 1;
     if (LODABLE[b.t]) { x.drawImage(lodSprite(b), b.x, b.y, w, w); continue; }
@@ -2384,8 +2427,16 @@ function bchunkAt(cx, cy, px) {
   return c;
 }
 bchunkSig.empty = (() => { let h = 17; for (let k = 0; k < (16 + 2) * (16 + 2); k++) h = (Math.imul(h, 31) + 7) | 0; return h; })();
+function drawDeck(b) {
+  const x = b.x, y = b.y;
+  g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(x + .12, y + .16, .9, .9);
+  g.fillStyle = '#4a3420'; for (const [px, py] of [[.1, .1], [.78, .1], [.1, .78], [.78, .78]]) g.fillRect(x + px, y + py, .12, .12);
+  g.fillStyle = '#7a5a36'; g.fillRect(x + .04, y + .04, .92, .92);
+  g.strokeStyle = 'rgba(40,26,14,.6)'; g.lineWidth = .025; g.beginPath(); for (let k = 1; k < 5; k++) { g.moveTo(x + .04 + k * .184, y + .04); g.lineTo(x + .04 + k * .184, y + .96); } g.stroke();
+}
 function drawB(b, t, alpha) {
   const w = b.w || 1;
+  if (b.br) drawDeck(b);
   if (alpha >= 1) {
     if (lodOn && LODABLE[b.t]) { g.drawImage(lodSprite(b), b.x, b.y, w, w); return; }
     if (!b.up) { const key = spriteKey(b, t); if (key) { g.drawImage(cachedSprite(b, t, key), b.x, b.y, w, w); return; } }
@@ -2644,7 +2695,8 @@ function render(fdt) {
     if (tr._ra == null) tr._ra = tr.ang;
     let da = tr.ang - tr._ra; da = Math.atan2(Math.sin(da), Math.cos(da)); tr._ra += da * Math.min(1, fdt * 10);
     if (tr.fx < x0 - 1 || tr.fx > x1 + 2 || tr.fy < y0 - 1 || tr.fy > y1 + 2) continue;
-    drawTrain(tr, t, 1);
+    if (!tr._tl) { tr._tl = []; trailPush(tr); }
+    drawWagons(tr); drawTrain(tr, t, 1);
     if (tr === selected) { g.strokeStyle = P.brassL; g.lineWidth = .06; g.setLineDash([.15, .1]); circle(tr.fx, tr.fy, .72); g.stroke(); g.setLineDash([]); }
     if (!paused && tr.st === 'move' && Math.random() < fdt * 9) smoke(tr.fx + Math.cos(tr._ra) * .4, tr.fy + Math.sin(tr._ra) * .4, 'rgba(235,232,225,');
   }
@@ -3281,6 +3333,7 @@ function renderInfo() {
       break;
     }
   }
+  if (RATE_SHOW[b.t] && b._t0 != null) { const r = rateOfB(b), unit = b.t === 'drill' || b.t === 'drill2' ? 'malmia' : 'kpl'; h += `<div class="kv"><span>Todellinen tuotanto (viim. minuutti)</span><span><b>${r >= 10 ? Math.round(r) : r.toFixed(1).replace('.', ',')}</b> ${unit}/min</span></div>`; }
   if (UPGRADABLE[b.t]) h += upgradeHTML(b);
   if (b.t !== 'hq') h += `<div class="acts">${b.t === 'train' || b.t === 'rail' || b.t === 'pipe' || b.t === 'tunnel' ? '' : '<button class="sbtn" data-a="rot">Käännä (R)</button>'}<button class="sbtn" data-a="del">Pura</button></div>`;
   setHTML($('info'), fillKeys(h));
@@ -3713,7 +3766,7 @@ function mapTipHTML() {
   if (tree[i]) return '<b>Metsä</b><div class="mut">Klikkaa kaataaksesi (3 puuta). Puut kaatuvat myös, kun niiden päälle rakennetaan.</div>';
   if (o === 6) return `<b>Öljylähde</b><div class="mut">Rakenna päälle öljypumppu</div>${oreTotal(i) !== Infinity ? `<div class="mut">Öljyä jäljellä ${fmtLeft(i)}</div>` : ''}`;
   if (o) return `<b>${ITEMS[ORE_ITEM[o]].n}</b><div class="mut">Klikkaa louhiaksesi käsin tai aseta pora päälle</div>${oreTotal(i) !== Infinity ? `<div class="mut">Jäljellä ${fmtLeft(i)}</div>` : ''}`;
-  if (terrain[i] === 1) return '<b>Vesi</b><div class="mut">Kattilat rakennetaan veden viereen</div>';
+  if (terrain[i] === 1) return `<b>${(depth[i] || 5) > 2 ? 'Syvä vesi' : 'Matala vesi'}</b><div class="mut">Kattilat rakennetaan veden viereen.</div><div class="mut">${(depth[i] || 5) > 2 ? 'Liian syvää siltaa varten: alita maanalaisella kuljettimella.' : 'Kuljettimet, putket ja raiteet voi rakentaa tähän siltana (+2 lankkua).'}</div>`;
   return null;
 }
 function renderMapTip() {
