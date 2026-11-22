@@ -219,6 +219,12 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 .htabs button.on { opacity: 1; color: var(--brass-light); border-color: var(--brass-dark); background: linear-gradient(#3a2c20, #2a2018); border-bottom: 1px solid #2a2018; }
 .touchKeys kbd { white-space: nowrap; }
 .keys[hidden] { display: none; }
+.resrow { border-top: 1px solid #3a2e22; padding: 7px 0 4px; }
+.resh { display: flex; justify-content: space-between; align-items: baseline; }
+.resh b { font-family: var(--display); color: var(--brass-light); font-size: 13px; letter-spacing: .04em; }
+.rescost { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin-top: 4px; font-size: 13px; }
+.rescost .lack { color: var(--bad); }
+.rescost .sbtn { margin-left: auto; }
 .keys kbd { align-self: start; justify-self: start; font-family: var(--body); font-weight: 700; color: var(--brass-light); background: #2a2018; border: 1px solid var(--brass-dark); border-radius: 3px; padding: 0 6px; }
 .chain { font-size: 14px; color: var(--muted); border-top: 1px solid #3a2e22; margin-top: 10px; padding-top: 10px; }
 
@@ -437,6 +443,8 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <kbd>Pura</kbd><span>Valitse Pura-kortti ja napauta tai vedä rakennusten yli. Materiaalit palautuvat varastoon</span>
       <kbd>Käännä</kbd><span>Kortti kääntää valittua rakennusta ennen rakentamista tai avattua rakennusta paikallaan</span>
       <kbd>Kopioi ja Kaavat</kbd><span>Kopioi-kortilla vedä suorakulmio alueen yli. Kaavat-kortista tallennat kaavan nimellä ja liität sen uudelleen napauttamalla karttaa</span>
+      <kbd>Kumoa</kbd><span>Peruu viimeisimmän rakentamisen tai purun. Uusi napautus peruu sitä edeltävän toiminnon</span>
+      <kbd>Näkymä</kbd><span>Vaihtaa karttanäkymää: rakennusten tila, höyryverkkojen paine ja (Normaali ja Hullu!) malmivarat. Kortin nimi kertoo nykyisen näkymän</span>
       <kbd>Päivitä</kbd><span>Vedä alue: kuljettimet vaihtuvat pikakuljettimiksi ja koneet päivittyvät seuraavalle tasolle</span>
       <kbd>Liuskat ylhäällä</kbd><span>Opastus, Varasto, Patentit ja Kartta avautuvat laatikoiksi. Napauta liuskaa uudelleen tai karttaa sulkeaksesi. Opastus-liuska näkyy, kunnes opastus on suoritettu tai ohitettu</span>
       <kbd>Kartta</kbd><span>Napauta tai vedä minikarttaa siirtyäksesi</span>
@@ -472,7 +480,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
     </div>
     <div class="chain">
       <b>Alkuun:</b> 1) Rakenna <b>Kattila</b> veden viereen ja lisää siihen hiiltä. 2) Vedä <b>Höyryputki</b> kattilasta tehdasalueelle. 3) Aseta <b>Höyrypora</b> malmin päälle putken viereen, nuoli kohti kuljetinta. 4) Ohjaa malmi <b>Sulattoon</b> ja levyt kuljettimella <b>Pääkonttoriin</b>. Kaikki pääkonttoriin tuotu siirtyy varastoosi.<br><br>
-      Kone syöttää tuotteensa nuolen suuntaan. Kuljetin syöttää koneeseen, jota se osoittaa. Putket, kattilat ja vierekkäiset koneet muodostavat höyryverkon. Jos verkon höyry ei riitä, sen koneet hidastuvat. Höyryputken voi vetää kuljettimen tai raiteen alta: rakenna putki suoraan niiden päälle. Jos materiaalit eivät riitä, rakennus jää suunnitelmaksi ja valmistuu itsestään, kun tavarat saapuvat. Puuttuvat hammasrattaat, kuparikelat ja putket valmistetaan tarvittaessa käsin levyistä. Kun samalla hihnalla kulkee monta eri tavaraa, kuljeta hihna koneiden ohi ja syötä koneet Syöttökouralla: se poimii hihnalta vain tarvittavat tavarat, joten hihna ei jumiudu.
+      Kone syöttää tuotteensa nuolen suuntaan. Kuljetin syöttää koneeseen, jota se osoittaa. Putket, kattilat ja vierekkäiset koneet muodostavat höyryverkon. Jos verkon höyry ei riitä, sen koneet hidastuvat. Höyryputken voi vetää kuljettimen tai raiteen alta: rakenna putki suoraan niiden päälle. Jos materiaalit eivät riitä, rakennus jää suunnitelmaksi ja valmistuu itsestään, kun tavarat saapuvat. Puuttuvat hammasrattaat, kuparikelat ja putket valmistetaan tarvittaessa käsin levyistä. Kun samalla hihnalla kulkee monta eri tavaraa, kuljeta hihna koneiden ohi ja syötä koneet Syöttökouralla: se poimii hihnalta vain tarvittavat tavarat, joten hihna ei jumiudu.<br><br>Kahden patentin jälkeen Patentit-paneeliin avautuu <b>Insinöörikilta</b>: pysyvät tutkimukset nopeuttavat poria, valmistusta ja höyryntuotantoa. Normaalilla ja Hullu!-tasolla Rikastamo säästää malmiesiintymiä.
     </div>
     <button class="big" data-a="closeHelp" id="helpClose">Aloita</button>
   </div>
@@ -568,7 +576,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.28';
+const VERSION = '0.30';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -1281,7 +1289,37 @@ function oilEnd() { for (const n of oilNets) for (const m of n.members) m.oil = 
 const netOf = b => (b && b.net != null ? nets[b.net] : null);
 const RATE_SHOW = { drill: 1, drill2: 1, smelter: 1, smelter2: 1, assembler: 1, assembler2: 1, saw: 1, refinery: 1, lumber: 1 };
 const UPGRADABLE = { inserter: 1, drill: 1, drill2: 1, smelter: 1, assembler: 1, pumpjack: 1, saw: 1, lumber: 1 };
-const mulOf = b => UP_SPEED[upl(b)] * (BUILD[b.t].mul || 1);
+// Engineers' guild: permanent research bought with production
+const RESEARCH = [
+  { id: 'mine', n: 'Porakruunut', d: 'Porat louhivat nopeammin.', per: .10, fx: 'louhintanopeus', cost: { rautalevy: 80, hammasratas: 40 } },
+  { id: 'craft', n: 'Tarkkuustyöstö', d: 'Sulatot, sahat ja kokoonpanijat työskentelevät nopeammin.', per: .08, fx: 'valmistusnopeus', cost: { kuparikela: 40, messinki: 30 } },
+  { id: 'steam', n: 'Painekattilat', d: 'Kattilat tuottavat enemmän höyryä samalla polttoaineella.', per: .08, fx: 'höyryntuotto', cost: { tiili: 60, putki: 30 } },
+  { id: 'save', n: 'Rikastamo', d: 'Porat saavat malmista enemmän irti: osa louhinnasta ei kuluta esiintymää.', per: .06, fx: 'malmisäästö', cost: { teras: 30, venttiili: 20 }, finite: true },
+];
+const RES_MAX = 8;
+const resLv = id => (S.res && S.res[id]) || 0;
+const resMul = id => 1 + resLv(id) * RESEARCH.find(r => r.id === id).per;
+function resCost(r) { const lv = resLv(r.id), c = {}; for (const k in r.cost) c[k] = Math.round(r.cost[k] * Math.pow(1.7, lv)); return c; }
+function buyResearch(id) {
+  const r = RESEARCH.find(q => q.id === id); if (!r || resLv(id) >= RES_MAX) return;
+  const c = resCost(r); if (!canAfford(c)) { toast('Materiaalit eivät riitä'); sfx('error'); return; }
+  pay(c); (S.res = S.res || {})[id] = resLv(id) + 1; sfx('patent'); flashT = .35;
+  toast(`Insinöörikilta: ${r.n} taso ${resLv(id)} (${r.fx} +${Math.round(resLv(id) * r.per * 100)} %)`);
+  renderGoal(); renderInv(); save();
+}
+function researchHTML() {
+  if (S.level < 2) return '';
+  let h = `<h3>Insinöörikilta</h3><div class="rate">Pysyviä parannuksia koko tehtaalle. Jokainen taso maksaa edellistä enemmän.</div>`;
+  for (const r of RESEARCH) {
+    if (r.finite && (!S.diff || S.diff === 'sandbox')) continue;
+    const lv = resLv(r.id), c = resCost(r), mx = lv >= RES_MAX;
+    h += `<div class="resrow"><div class="resh"><b>${r.n}</b><span class="rate">taso ${lv} / ${RES_MAX}</span></div><div class="rate">${r.d} Nyt +${Math.round(lv * r.per * 100)} %${mx ? '' : `, seuraava +${Math.round((lv + 1) * r.per * 100)} %`}.</div>`;
+    h += mx ? '<div class="rate">Täysin tutkittu.</div>' : `<div class="rescost">${Object.keys(c).map(k => `<span class="${(S.inv[k] || 0) < c[k] ? 'lack' : ''}">${icon(k)}${fmt(c[k])}</span>`).join(' ')}<button class="sbtn" data-a="research" data-v="${r.id}" ${canAfford(c) ? '' : 'disabled'}>Tutki</button></div>`;
+    h += '</div>';
+  }
+  return h;
+}
+const mulOf = b => UP_SPEED[upl(b)] * (BUILD[b.t].mul || 1) * resMul('craft');
 const UP_SPEED = [1, 1, 1.5, 2.1], UP_STEAM = [1, 1, 1.35, 1.8];
 const UP_COST = [null, null, { kellokoneisto: 2, messinki: 6 }, { kellokoneisto: 4, venttiili: 4, teras: 6, voiteluoljy: 3 }];
 const upl = b => b.up || 1;
@@ -1394,8 +1432,8 @@ const UPD = {
     const ti = drillTile(b);
     if (ti < 0) { b.st = 'depleted'; b.act = 0; return; }
     const s = steam(b); setRun(b, s);
-    b.prog += dt * b.act * BUILD[b.t].rate * UP_SPEED[upl(b)];
-    if (b.prog >= 1) { b.prog -= 1; const o = ORE_ITEM[ore[ti]]; stat(o, 1, 'p'); rateMark(b, 1); mineTile(ti, 1); if (!pushFront(b, o)) b.out = o; }
+    b.prog += dt * b.act * BUILD[b.t].rate * UP_SPEED[upl(b)] * resMul('mine');
+    if (b.prog >= 1) { b.prog -= 1; const o = ORE_ITEM[ore[ti]]; stat(o, 1, 'p'); rateMark(b, 1); mineTile(ti, Math.random() < resLv('save') * .06 ? 0 : 1); if (!pushFront(b, o)) b.out = o; }
   },
   smelter(b, dt) {
     if (b.outN > 0 && pushFront(b, b.outT)) b.outN--;
@@ -1545,9 +1583,9 @@ function tick(dt) {
   S.time += dt;
   if (netsDirty) rebuildNets();
   for (const n of nets) { n.supply = 0; n.demand = 0; }
-  const storm = S.storm && S.storm.end > S.time;
+  const storm = S.storm && S.storm.end > S.time, steamMul = resMul('steam');
   oilBegin();
-  for (const b of boilerList) if ((b.burn > 0 || boilerFuel(b)) && b.net != null) nets[b.net].supply += BUILD[b.t].gen * (storm ? .75 : 1);
+  for (const b of boilerList) if ((b.burn > 0 || boilerFuel(b)) && b.net != null) nets[b.net].supply += BUILD[b.t].gen * (storm ? .75 : 1) * steamMul;
   const TR = BUILD.tank.rate, TS = BUILD.tank.store;
   for (const n of nets) {
     n.stored = 0; for (const tk of n.tanks) n.stored += tk.stor || 0;
@@ -3100,6 +3138,8 @@ function renderTools() {
   if (unlocked('fastbelt')) h += `<button class="tool${tool === 'upgrade' ? ' on' : ''}" data-tool="upgrade" aria-label="Päivitä alue"><span class="k">U</span><img src="${TURL.upgrade}" alt=""><span class="nm">Päivitä</span></button>`;
   h += `<button class="tool${tool === 'remove' ? ' on' : ''}" data-tool="remove" aria-label="Pura"><span class="k">Del</span><img src="${TURL.remove}" alt=""><span class="nm">Pura</span></button>`;
   h += `<button class="tool" data-a="rotTool" aria-label="Käännä"><span class="k">R</span><span class="big-ch">&#x21bb;</span><span class="nm">Käännä</span></button>`;
+  h += `<button class="tool" data-a="undoBtn" aria-label="Kumoa"><span class="k l">Ctrl+Z</span><span class="big-ch">&#x21b6;</span><span class="nm">Kumoa</span></button>`;
+  h += `<button class="tool${overlay ? ' on' : ''}" data-a="ovlBtn" aria-label="Tilanäkymä"><span class="k">T</span><span class="big-ch">&#x25d0;</span><span class="nm">${['Näkymä', 'Tila', 'Höyry', 'Malmit'][overlay]}</span></button>`;
   setHTML($('tools'), h + '</div>');
 }
 function costHTML(cost) {
@@ -3263,6 +3303,7 @@ function renderGoal() {
     h += `<h3>Maanmittaus</h3><div class="rate">Laajenna rakennusaluetta ${regionR() * 2} → ${nsv.r * 2} ruutua. Hinta: ${Object.keys(nsv.cost).map(k => `<span class="${(S.inv[k] || 0) < nsv.cost[k] ? 'lack' : ''}">${nsv.cost[k]} ${ITEMS[k].n.toLowerCase()}</span>`).join(', ')}</div>`;
     h += `<button class="sbtn" style="margin-top:6px" data-a="survey" ${canAfford(nsv.cost) ? '' : 'disabled'}>Kartoita lisää</button>`;
   }
+  h += researchHTML();
   if (S.storm && S.storm.end > S.time) h += `<div class="hint" style="border-color:#5fa8c9;background:rgba(95,168,201,.1)"><b>Myrsky</b> · ${fmtTime(S.storm.end - S.time)}. Kattilat tuottavat 25 % vähemmän höyryä.</div>`;
   const hn = S.tut != null && S.tut < TUT.length ? null : hint() && fillKeys(hint()); if (hn) h += `<div class="hint">${hn}</div>`;
   setHTML($('goalBody'), fillKeys(h));
@@ -3304,7 +3345,7 @@ function renderInfo() {
   switch (b.t) {
     case 'drill': case 'drill2': {
       const o = ORE_ITEM[b.oreT || ore[idx(b.x, b.y)]], dl = drillLeft(b), R = BUILD[b.t].reach;
-      h += netKv(b) + (o ? kv('Louhii', `${icon(o)} ${ITEMS[o].n}`) + kv(`Jäljellä (${2 * R + 1} × ${2 * R + 1})`, dl === Infinity ? 'ehtymätön' : fmt(dl)) : '') + kv('Nopeus', `${Math.round(BUILD[b.t].rate * UP_SPEED[upl(b)] * 60)}/min täydellä paineella`) + kv('Höyry', Math.round(BUILD[b.t].use * UP_STEAM[upl(b)]) + ' yks.') + prog(b.prog);
+      h += netKv(b) + (o ? kv('Louhii', `${icon(o)} ${ITEMS[o].n}`) + kv(`Jäljellä (${2 * R + 1} × ${2 * R + 1})`, dl === Infinity ? 'ehtymätön' : fmt(dl)) : '') + kv('Nopeus', `${Math.round(BUILD[b.t].rate * UP_SPEED[upl(b)] * resMul('mine') * 60)}/min täydellä paineella`) + kv('Höyry', Math.round(BUILD[b.t].use * UP_STEAM[upl(b)]) + ' yks.') + prog(b.prog);
       break;
     }
     case 'lumber': {
@@ -3450,6 +3491,8 @@ function doAction(el) {
   switch (a) {
     case 'fold': el.closest('.panel').classList.toggle('closed'); el.textContent = el.closest('.panel').classList.contains('closed') ? '+' : '–'; return;
     case 'close': closeInfo(); return;
+    case 'undoBtn': undo(); return;
+    case 'ovlBtn': setOverlay((overlay + 1) % (S.diff && S.diff !== 'sandbox' ? 4 : 3)); renderTools(); return;
     case 'helpTab': setHelpTab(el.dataset.v); return;
     case 'closeHelp': $('help').hidden = true; paused = false; return;
     case 'pickDiff': S.diff = el.dataset.v; delete S.diffPending; $('help').hidden = true; syncHelp(); renderGoal();
@@ -3472,6 +3515,7 @@ function doAction(el) {
     case 'upg': if (b) upgrade(b); break;
     case 'delZep': if (b) removeZep(b); return;
     case 'survey': doSurvey(); return;
+    case 'research': buyResearch(el.dataset.v); return;
     case 'menu': $('newg').hidden = false; $('saveTxt').value = ''; syncSettings(); return;
     case 'export': { const txt = btoa(unescape(encodeURIComponent(serialize()))); $('saveTxt').value = txt; $('saveTxt').select();
       if (navigator.clipboard) navigator.clipboard.writeText(txt).then(() => toast('Tallennus kopioitu leikepöydälle'), () => toast('Valitse teksti ja kopioi se itse')); return; }
@@ -4037,7 +4081,7 @@ window.addEventListener('keydown', e => {
   else if (k === 'h') $('help').hidden = false;
   else if (k === 'i') toggleStats();
   else if (k === 'k') toggleBook();
-  else if (k === 't') setOverlay((overlay + 1) % (S.diff && S.diff !== 'sandbox' ? 4 : 3));
+  else if (k === 't') { setOverlay((overlay + 1) % (S.diff && S.diff !== 'sandbox' ? 4 : 3)); renderTools(); }
   else if (k === 'u') selectTool('upgrade');
   else if (k === 'o') { $('logM').hidden = false; renderLog(); }
   else if (k === 'l') { $('bpM').hidden = false; renderBps(); }
