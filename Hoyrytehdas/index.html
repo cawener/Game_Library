@@ -130,6 +130,9 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 #mtip b { font-family: var(--display); color: var(--brass-light); font-size: 12.5px; letter-spacing: .04em; }
 #mtip .ok { color: var(--ok); } #mtip .warn { color: var(--warn); } #mtip .bad { color: var(--bad); }
 #mtip .mut { color: var(--muted); }
+.contract { margin: -2px 0 12px; padding: 2px 12px 10px; border: 1px solid var(--copper); border-radius: 5px; background: rgba(192,109,60,.08); }
+.contract h3 { margin-top: 8px; }
+.cmode { display: flex; gap: 4px; margin: 6px 0 4px; }
 .hint { margin-top: 10px; padding: 8px 10px; border-left: 3px solid var(--copper); background: rgba(192,109,60,.1); font-size: 13px; line-height: 1.4; }
 
 #tools {
@@ -386,7 +389,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.11';
+const VERSION = '0.12';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -1099,9 +1102,12 @@ const ACC = {
   chest(b, item) { if (b.n >= 400) return false; b.inv[item] = (b.inv[item] || 0) + 1; b.n++; return true; },
   splitter(b, item) { if (b.buf.length >= 2) return false; b.buf.push(item); return true; },
   hq(b, item) {
-    b.got++; deliv.push({ t: S.time, i: item });
-    const c = S.contract;
-    if (c && c.i === item && c.got < c.n && c.end > S.time) { c.got++; if (c.got >= c.n) contractDone(); }
+    b.got++;
+    const c = S.contract, mode = c ? (c.mode || 'half') : 'off';
+    let toContract = false;
+    if (c && c.i === item && c.got < c.n && c.end > S.time && mode !== 'off') { toContract = mode === 'all' || (c.alt = !c.alt); }
+    deliv.push({ t: S.time, i: item, c: toContract });
+    if (toContract) { c.got++; if (c.got >= c.n) contractDone(); }
     else give(item);
     return true;
   },
@@ -1326,8 +1332,8 @@ function events() {
     const rew = { ...rw[Math.random() * rw.length | 0].r };
     const mult = 1 + S.level * .25;
     for (const k in rew) rew[k] = Math.round(rew[k] * mult);
-    S.contract = { i: c.i, n: Math.round(c.n * (1 + S.level * .2)), got: 0, end: S.time + 360, rew };
-    toast(`Uusi tilaus: ${S.contract.n} × ${ITEMS[c.i].n} pääkonttoriin 6 minuutissa`); sfx('craft');
+    S.contract = { i: c.i, n: Math.round(c.n * (1 + S.level * .2)), got: 0, end: S.time + 360, rew, mode: 'half' };
+    toast(`Uusi tilaus: ${S.contract.n} × ${ITEMS[c.i].n} pääkonttoriin 6 minuutissa. Puolet toimituksista ohjautuu tilaukselle, loput varastoon. Jaon voi muuttaa patenttipaneelista.`); sfx('craft');
   }
 }
 function contractDone() {
@@ -2665,6 +2671,15 @@ function hint() {
 }
 function renderGoal() {
   let h = '';
+  const c = S.contract;
+  if (c) {
+    const f = c.got / c.n;
+    h += `<div class="contract"><h3>Tilaus · ${fmtTime(Math.max(0, c.end - S.time))} jäljellä</h3><div class="req">${icon(c.i)}<span>${ITEMS[c.i].n}</span><span>${c.got} / ${c.n}</span><div class="bar"><i style="width:${f * 100}%"></i></div></div>`;
+    const md = c.mode || 'half';
+    h += `<div class="rate">Palkkio: ${Object.keys(c.rew).map(k => `${c.rew[k]} ${ITEMS[k].n.toLowerCase()}`).join(', ')}.</div>`;
+    h += `<div class="cmode" role="group" aria-label="Toimitusten jako">${[['half', 'Puolet'], ['all', 'Kaikki'], ['off', 'Tauolla']].map(([v, l]) => `<button class="sbtn${md === v ? ' on' : ''}" data-a="cmode" data-v="${v}">${l}</button>`).join('')}</div>`;
+    h += `<div class="rate">${md === 'half' ? `Joka toinen ${ITEMS[c.i].n.toLowerCase()} menee tilaukselle, loput varastoon.` : md === 'all' ? `Kaikki toimitettu ${ITEMS[c.i].n.toLowerCase()} menee tilaukselle, eikä varasto kasva.` : 'Tilaus ei ota toimituksia. Aika kuluu silti.'}</div></div>`;
+  }
   if (S.tut != null && S.tut < TUT.length) {
     h += `<div class="tut"><div class="pat-no">Opastus ${S.tut + 1} / ${TUT.length}</div><p>${fillKeys(TUT[S.tut].t)}</p><button class="sbtn" data-a="tutSkip">Ohita opastus</button></div>`;
   }
@@ -2686,12 +2701,6 @@ function renderGoal() {
   if (nsv && S.level >= 1) {
     h += `<h3>Maanmittaus</h3><div class="rate">Laajenna rakennusaluetta ${regionR() * 2} → ${nsv.r * 2} ruutua. Hinta: ${Object.keys(nsv.cost).map(k => `<span class="${(S.inv[k] || 0) < nsv.cost[k] ? 'lack' : ''}">${nsv.cost[k]} ${ITEMS[k].n.toLowerCase()}</span>`).join(', ')}</div>`;
     h += `<button class="sbtn" style="margin-top:6px" data-a="survey" ${canAfford(nsv.cost) ? '' : 'disabled'}>Kartoita lisää</button>`;
-  }
-  const c = S.contract;
-  if (c) {
-    const f = c.got / c.n;
-    h += `<h3>Tilaus · ${fmtTime(Math.max(0, c.end - S.time))} jäljellä</h3><div class="req">${icon(c.i)}<span>${ITEMS[c.i].n}</span><span>${c.got} / ${c.n}</span><div class="bar"><i style="width:${f * 100}%"></i></div></div>`;
-    h += `<div class="rate">Palkkio: ${Object.keys(c.rew).map(k => `${c.rew[k]} ${ITEMS[k].n.toLowerCase()}`).join(', ')}. Tilatut tavarat menevät tilaukselle, eivät varastoon.</div>`;
   }
   if (S.storm && S.storm.end > S.time) h += `<div class="hint" style="border-color:#5fa8c9;background:rgba(95,168,201,.1)"><b>Myrsky</b> · ${fmtTime(S.storm.end - S.time)}. Kattilat tuottavat 25 % vähemmän höyryä.</div>`;
   const hn = S.tut != null && S.tut < TUT.length ? null : hint() && fillKeys(hint()); if (hn) h += `<div class="hint">${hn}</div>`;
@@ -2850,9 +2859,9 @@ function renderInfo() {
     case 'belt': case 'fastbelt': h += kv('Tavaroita', b.items.length) + kv('Nopeus', BUILD[b.t].speed + ' ruutua/s') + (b.pipe ? kv('Alla', 'höyryputki') : ''); break;
     case 'hq': {
       h += '<p class="pat-desc">Kaikki tänne kuljetettu siirtyy varastoosi. Kuljettimet voivat tulla mistä tahansa sivusta.</p>';
-      const cnt = {}; for (const d of deliv) cnt[d.i] = (cnt[d.i] || 0) + 1;
+      const cnt = {}, toC = {}; for (const d of deliv) { cnt[d.i] = (cnt[d.i] || 0) + 1; if (d.c) toC[d.i] = (toC[d.i] || 0) + 1; }
       const ks = Object.keys(cnt);
-      h += '<h3>Toimitukset / min</h3>' + (ks.length ? ks.map(k => `<div class="irow">${icon(k)}<span class="n">${ITEMS[k].n}</span><span class="c">${cnt[k]}</span></div>`).join('') : '<div class="empty">Ei toimituksia viimeisen minuutin aikana.</div>');
+      h += '<h3>Toimitukset / min</h3>' + (ks.length ? ks.map(k => `<div class="irow">${icon(k)}<span class="n">${ITEMS[k].n}${toC[k] ? ` <span class="rate">(${toC[k]} tilaukselle)</span>` : ''}</span><span class="c">${cnt[k]}</span></div>`).join('') : '<div class="empty">Ei toimituksia viimeisen minuutin aikana.</div>');
       break;
     }
   }
@@ -2904,6 +2913,7 @@ function doAction(el) {
       b.sched = sc.length === all.length ? null : sc;
     } break;
     case 'stats': toggleStats(); return;
+    case 'cmode': if (S.contract) { S.contract.mode = el.dataset.v; renderGoal(); } return;
     case 'tutSkip': S.tut = TUT.length; tutTarget = null; renderGoal(); return;
     case 'cat': curCat = el.dataset.v; renderTools(); return;
     case 'fuel': if (b) { const n = Math.min(+el.dataset.n, S.inv.hiili || 0, BUILD[b.t].cap - b.fuel - (b.wood || 0)); if (n > 0) { b.fuel += n; pay({ hiili: n }); } } break;
