@@ -231,6 +231,10 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 .set input[type=range] { width: 100%; accent-color: var(--brass); }
 .set input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--brass); }
 .set select { background: #120e0b; color: var(--parchment); border: 1px solid var(--brass-dark); border-radius: 4px; padding: 4px 6px; font: inherit; }
+.slots { display: grid; gap: 8px; }
+.slot { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid #3a2e22; border-radius: 4px; font-size: 13px; }
+.slot b { font-family: var(--display); color: var(--brass-light); font-size: 13px; }
+.slot span { color: var(--muted); }
 .sbtn.on { border-color: var(--brass-light); background: #4a3922; color: var(--brass-light); }
 
 @media (max-width: 760px) {
@@ -355,6 +359,9 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <label for="setAuto">Automaattitallennus</label><select id="setAuto"><option value="15">15 s välein</option><option value="30">30 s välein</option><option value="60">1 min välein</option><option value="0">Pois</option></select>
     </div>
     <div class="acts"><button class="sbtn" data-a="tutAgain">Näytä opastus uudelleen</button></div>
+    <h3>Tallennuspaikat</h3>
+    <p class="lead">Peli tallentuu automaattisesti. Tallennuspaikkoihin voit lisäksi ottaa omia kopioita. Lataaminen korvaa nykyisen pelin, joten tallenna se ensin paikkaan, jos haluat säilyttää sen.</p>
+    <div id="slots" class="slots"></div>
     <h3>Siirrä tallennus</h3>
     <p class="lead">Peli tallentuu tähän selaimeen. Vie tallennus tekstinä, niin voit jatkaa toisella laitteella liittämällä tekstin tähän ja valitsemalla Lataa.</p>
     <label for="saveTxt" class="rate">Tallennusteksti</label>
@@ -398,6 +405,7 @@ const ITEMS = {
   messinki:     { n: 'Messinki',       c: '#e2b845', s: 'plate' },
   voiteluoljy:  { n: 'Voiteluöljy',    c: '#6a4a24', s: 'can' },
   puu:          { n: 'Puu',            c: '#8a5c32', s: 'log' },
+  lankku:       { n: 'Lankku',         c: '#c49058', s: 'plank' },
   raakaoljy:    { n: 'Raakaöljy',      c: '#2a2032', s: 'drop', fluid: true },
 };
 const ORE_ITEM = [null, 'rautamalmi', 'kuparimalmi', 'hiili', 'kivi', 'sinkkimalmi', null];
@@ -409,7 +417,10 @@ const SMELT = {
   kivi:        { n: 2, out: 'tiili',      k: 1, t: 2.0, lvl: 0 },
   sinkkimalmi: { n: 1, out: 'sinkki',     k: 1, t: 1.6, lvl: 0 },
   rautalevy:   { n: 3, out: 'teras',      k: 1, t: 4.0, lvl: 2 },
+  puu:         { n: 2, out: 'hiili',      k: 1, t: 2.5, lvl: 0 },
 };
+const SAW = { puu: { n: 1, out: 'lankku', k: 2, t: 1.5, lvl: 0 } };
+const tableOf = b => (b.t === 'saw' ? SAW : SMELT);
 // Assembler recipes keyed by output item
 const RECIPES = {
   hammasratas:   { in: { rautalevy: 2 }, k: 1, t: 1.0, lvl: 0, hand: true },
@@ -444,7 +455,7 @@ const BUILD = {
                desc: 'Louhii 72/min. Kuluttaa 35 höyryä.' },
   rail:      { n: 'Rautatie',      key: 'T', lvl: 3, cost: { teras: 1, puu: 1 },
                desc: 'Raide junille. Vedä hiirellä. Raiteet yhdistyvät viereisiin raiteisiin ja asemiin.' },
-  station:   { n: 'Asema',         key: 'Y', lvl: 3, cost: { teras: 8, rautalevy: 6, puu: 10 },
+  station:   { n: 'Asema',         key: 'Y', lvl: 3, cost: { teras: 8, rautalevy: 6, lankku: 10 },
                desc: 'Osa rataa. Lastausasema ottaa tavaroita kuljettimilta, purkuasema syöttää ne nuolen suuntaan.' },
   train:     { n: 'Höyryveturi',   key: 'V', lvl: 3, cost: { teras: 20, venttiili: 6, hammasratas: 10 }, cap: 200, speed: 4,
                desc: 'Asetetaan raiteelle. Kiertää asemia järjestyksessä: lastaa 200 tavaraa ja purkaa ne.' },
@@ -452,6 +463,10 @@ const BUILD = {
                desc: 'Rakenna ensin sisäänmeno, sitten uloskäynti samaan suuntaan enintään 5 ruudun päähän. Tavarat kulkevat rakennusten, putkien ja raiteiden ali.' },
   signal:    { n: 'Opastin',       key: 'O', lvl: 3, cost: { teras: 2, kuparikela: 2 },
                desc: 'Rakennetaan radalle. Jakaa radan osuuksiin: veturi ajaa opastimen ohi vasta, kun seuraava osuus on vapaa.' },
+  saw:       { n: 'Saha',          key: '', lvl: 1, cost: { rautalevy: 8, hammasratas: 4, puu: 6 }, use: 15,
+               desc: 'Sahaa puusta lankkuja (1 puu → 2 lankkua, 1,5 s). Lankkuja tarvitaan asemiin, rahtimastoihin ja Auroran runkoon. Kuluttaa 15 höyryä.' },
+  lumber:    { n: 'Metsuri',       key: '', lvl: 1, cost: { rautalevy: 10, hammasratas: 6, tiili: 6 }, use: 10, radius: 4,
+               desc: 'Kaataa puita 4 ruudun säteellä ja istuttaa uudet tilalle; ne kasvavat kahdessa minuutissa. Syöttää puut nuolen suuntaan. Kuluttaa 10 höyryä.' },
   lamp:      { n: 'Kaasulyhty',    key: 'L', lvl: 0, cost: { rautalevy: 2, kuparilevy: 1 },
                desc: 'Valaisee ympäristöä öisin. Ei tarvitse höyryä.' },
   smelter2:  { n: 'Masuuni',       key: 'E', lvl: 3, size: 2, mul: 3, cost: { tiili: 60, teras: 12, venttiili: 4 }, use: 50,
@@ -466,7 +481,7 @@ const BUILD = {
                desc: '2 × 2. Jalostaa 20 raakaöljystä 2 voiteluöljyä kolmessa sekunnissa. Voiteluöljyä tarvitaan mäntämoottoreihin ja telakalle.' },
   oilboiler: { n: 'Öljykattila',   key: '', lvl: 3, cost: { teras: 12, tiili: 20, venttiili: 4 }, gen: 220, burnT: 2, oilUse: 6,
                desc: 'Rakennetaan veden viereen ja liitetään öljyputkistoon. Polttaa raakaöljyä ja tuottaa 220 höyryä.' },
-  mast:      { n: 'Rahtimasto',    key: '', lvl: 4, size: 2, cost: { teras: 30, tiili: 20, kuparikela: 20 },
+  mast:      { n: 'Rahtimasto',    key: '', lvl: 4, size: 2, cost: { teras: 30, tiili: 20, kuparikela: 20, lankku: 20 },
                desc: '2 × 2. Rahti-ilmalaivojen pysähdyspaikka. Lastaus ottaa tavaroita kuljettimilta, purku syöttää ne nuolen suuntaan.' },
   zep:       { n: 'Rahti-ilmalaiva', key: '', lvl: 4, cost: { mantamoottori: 2, kuparikela: 60, teras: 30, voiteluoljy: 10 }, cap: 300, speed: 6,
                desc: 'Asetetaan rahtimastolle. Lentää suoraan mastolta toiselle maaston yli ja kuljettaa 300 tavaraa.' },
@@ -484,14 +499,14 @@ const SURVEY = [
 const regionR = () => S.region || 64;
 const inRegion = (x, y) => { const r = regionR(); return x >= W / 2 - r && x < W / 2 + r && y >= H / 2 - r && y < H / 2 + r; };
 const DOCK_STAGES = [
-  { n: 'Runko', d: 'Teräskaaret ja messinkiset kylkiluut', cost: { teras: 150, messinki: 80 } },
+  { n: 'Runko', d: 'Teräskaaret, messinkiset kylkiluut ja lankkukansi', cost: { teras: 150, messinki: 80, lankku: 80 } },
   { n: 'Kaasukuori', d: 'Kuparikeloilla kiristetty kuori ja putkisto', cost: { kuparikela: 300, putki: 80 } },
   { n: 'Koneisto', d: 'Mäntämoottorit, potkurit ja ohjauskoneisto', cost: { mantamoottori: 20, kellokoneisto: 20, venttiili: 40, voiteluoljy: 30 } },
 ];
 
 const PATENTS = [
   { n: 'Hammasvälitys', d: 'Patenttivirasto haluaa nähdä, että laakso pystyy sarjatuotantoon.',
-    cost: { rautalevy: 60, kuparilevy: 40 }, unl: 'Kokoonpanija, Jakaja, Messinki (kupari + sinkki)' },
+    cost: { rautalevy: 60, kuparilevy: 40 }, unl: 'Kokoonpanija, Jakaja, Messinki (kupari + sinkki), Saha, Metsuri' },
   { n: 'Paineistettu höyry', d: 'Messinkiset osat ja tiilet painekattiloiden muurauksiin.',
     cost: { hammasratas: 60, kuparikela: 80, tiili: 60, messinki: 40 }, unl: 'Teräs (sulatto), Paineventtiili, Pikakuljetin, Maanalainen kuljetin' },
   { n: 'Hienomekaniikka', d: 'Venttiilit ja teräs avaavat tien kellosepän taitoihin ja rautateille.',
@@ -505,7 +520,7 @@ const PATENTS = [
 const STATUS = {
   work: ['Toiminnassa', 'ok'], nosteam: ['Ei höyryä', 'bad'], low: ['Höyrynpaine alhainen', 'warn'],
   idle: ['Odottaa raaka-aineita', 'warn'], blocked: ['Ulostulo tukossa', 'warn'], norecipe: ['Valitse resepti', 'warn'],
-  burn: ['Polttaa hiiltä', 'ok'], nofuel: ['Ei polttoainetta', 'bad'], standby: ['Valmiustilassa', 'ok'],
+  burn: ['Polttaa', 'ok'], notrees: ['Ei puita lähellä', 'warn'], nofuel: ['Ei polttoainetta', 'bad'], standby: ['Valmiustilassa', 'ok'],
   nonet: ['Ei yhteyttä kattilaan', 'bad'], move: ['Matkalla', 'ok'], load: ['Lastaa', 'ok'], unload: ['Purkaa', 'ok'],
   nopath: ['Ei reittiä seuraavalle asemalle', 'bad'], nostation: ['Ei asemia aikataulussa', 'warn'],
   nooil: ['Ei raakaöljyä', 'bad'], oilfull: ['Öljyputkisto täynnä', 'warn'], fly: ['Lentää', 'ok'], nomast: ['Tarvitaan vähintään kaksi mastoa', 'warn'],
@@ -715,7 +730,8 @@ function makeB(t, x, y, d) {
     case 'belt': case 'fastbelt': b.items = []; break;
     case 'tunnel': b.items = []; b.kind = 'in'; b.link = null; break;
     case 'drill': case 'drill2': b.prog = 0; b.out = null; break;
-    case 'smelter': case 'smelter2': Object.assign(b, { inT: null, inN: 0, cur: null, prog: 0, outT: null, outN: 0 }); break;
+    case 'lumber': b.prog = 0; b.outN = 0; break;
+    case 'smelter': case 'smelter2': case 'saw': Object.assign(b, { inT: null, inN: 0, cur: null, prog: 0, outT: null, outN: 0 }); break;
     case 'assembler': case 'assembler2': Object.assign(b, { rec: null, inv: {}, cur: false, prog: 0, outN: 0 }); break;
     case 'dock': Object.assign(b, { stage: 0, got: {}, launch: null }); break;
     case 'boiler': case 'bigboiler': b.fuel = 0; b.burn = 0; break;
@@ -876,7 +892,8 @@ function contents(b) {
   switch (b.t) {
     case 'belt': case 'fastbelt': case 'tunnel': for (const it of b.items) add(it.i, 1); break;
     case 'drill': case 'drill2': add(b.out, 1); break;
-    case 'smelter': case 'smelter2': add(b.inT, b.inN); add(b.outT, b.outN); if (b.cur) add(b.cur, SMELT[b.cur].n); break;
+    case 'smelter': case 'smelter2': case 'saw': add(b.inT, b.inN); add(b.outT, b.outN); if (b.cur) add(b.cur, tableOf(b)[b.cur].n); break;
+    case 'lumber': add('puu', b.outN); break;
     case 'assembler': case 'assembler2': for (const k in b.inv) add(k, b.inv[k]); add(b.rec, b.outN);
       if (b.cur && RECIPES[b.rec]) for (const k in RECIPES[b.rec].in) add(k, RECIPES[b.rec].in[k]); break;
     case 'boiler': case 'bigboiler': add('hiili', b.fuel); add('puu', b.wood || 0); break;
@@ -1011,7 +1028,7 @@ function rebuildOil() {
 function oilBegin() { for (const n of oilNets) { n.amt = 0; for (const m of n.members) n.amt += m.oil || 0; n.amt = Math.min(n.amt, n.cap); } }
 function oilEnd() { for (const n of oilNets) for (const m of n.members) m.oil = n.cap ? n.amt * oilCap(m) / n.cap : 0; }
 const netOf = b => (b && b.net != null ? nets[b.net] : null);
-const UPGRADABLE = { drill: 1, drill2: 1, smelter: 1, assembler: 1, pumpjack: 1 };
+const UPGRADABLE = { drill: 1, drill2: 1, smelter: 1, assembler: 1, pumpjack: 1, saw: 1, lumber: 1 };
 const mulOf = b => UP_SPEED[upl(b)] * (BUILD[b.t].mul || 1);
 const UP_SPEED = [1, 1, 1.5, 2.1], UP_STEAM = [1, 1, 1.35, 1.8];
 const UP_COST = [null, null, { kellokoneisto: 2, messinki: 6 }, { kellokoneisto: 4, venttiili: 4, teras: 6, voiteluoljy: 3 }];
@@ -1055,7 +1072,7 @@ function rateOf(item, kind) {
 
 const ACC = {
   smelter(b, item) {
-    const r = SMELT[item];
+    const r = tableOf(b)[item];
     if (!r || S.level < r.lvl) return false;
     if (b.inT && b.inT !== item && b.inN > 0) return false;
     if (b.inN >= r.n * 4) return false;
@@ -1084,7 +1101,7 @@ const ACC = {
   },
   station(b, item) { if (b.mode !== 'load' || b.n >= 300) return false; b.inv[item] = (b.inv[item] || 0) + 1; b.n++; return true; },
 };
-ACC.bigboiler = ACC.boiler;
+ACC.bigboiler = ACC.boiler; ACC.saw = ACC.smelter;
 ACC.mast = (b, item) => { if (b.mode !== 'load' || b.n >= 400) return false; b.inv[item] = (b.inv[item] || 0) + 1; b.n++; return true; }; ACC.smelter2 = ACC.smelter; ACC.assembler2 = ACC.assembler;
 ACC.dock = (b, item) => {
   if (b.launch != null) return false;
@@ -1117,11 +1134,11 @@ const UPD = {
   smelter(b, dt) {
     if (b.outN > 0 && pushFront(b, b.outT)) b.outN--;
     if (!b.cur) {
-      const r = b.inT && SMELT[b.inT];
+      const r = b.inT && tableOf(b)[b.inT];
       if (r && b.inN >= r.n && b.outN < 5 && (b.outN === 0 || b.outT === r.out)) { b.inN -= r.n; b.cur = b.inT; b.prog = 0; stat(b.cur, r.n, 'c'); }
     }
     if (b.cur) {
-      const r = SMELT[b.cur], s = steam(b); setRun(b, s);
+      const r = tableOf(b)[b.cur], s = steam(b); setRun(b, s);
       b.prog += dt * b.act * mulOf(b) / r.t;
       if (b.prog >= 1) { b.outT = r.out; b.outN += r.k; b.cur = null; b.prog = 0; stat(r.out, r.k, 'p'); }
     } else { b.act = 0; b.st = b.outN >= 5 ? 'blocked' : 'idle'; }
@@ -1151,6 +1168,38 @@ const UPD = {
     }
   },
 };
+UPD.saw = UPD.smelter;
+UPD.lumber = (b, dt) => {
+  if (b.outN > 0 && pushFront(b, 'puu')) b.outN--;
+  if (b.outN >= 6) { b.act = 0; b.st = 'blocked'; return; }
+  const R = BUILD.lumber.radius;
+  if ((S.time + b.x * .13) % 1 < dt || b._tgt === undefined) {
+    b._tgt = null;
+    let best = 1e9;
+    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) { const x = b.x + dx, y = b.y + dy; if (!inB(x, y) || !inRegion(x, y) || !tree[idx(x, y)]) continue; const d = dx * dx + dy * dy; if (d <= R * R + 1 && d < best) { best = d; b._tgt = { x, y }; } }
+  }
+  if (!b._tgt) { b.act = 0; b.st = 'notrees'; return; }
+  const s = steam(b); setRun(b, s);
+  b.prog += dt * b.act * UP_SPEED[upl(b)] / 5;
+  if (b.prog >= 1) {
+    b.prog = 0; const { x, y } = b._tgt;
+    if (tree[idx(x, y)]) { fellAt(x, y, 0); b.outN += 2; stat('puu', 2, 'p'); (S.regrow = S.regrow || []).push({ i: idx(x, y), at: S.time + 120 }); }
+    b._tgt = undefined;
+  }
+};
+function regrowTick() {
+  if (!S.regrow || !S.regrow.length) return;
+  for (let k = S.regrow.length - 1; k >= 0; k--) {
+    const r = S.regrow[k]; if (r.at > S.time) continue;
+    S.regrow.splice(k, 1);
+    if (grid[r.i] || tree[r.i] || ghostGrid.get(r.i)) continue;
+    const x = r.i % W, y = (r.i / W) | 0;
+    tree[r.i] = 1 + (hash(x + 17, y * 13 + (S.seed % 53)) * 5 | 0);
+    const fi = (S.felled || []).indexOf(r.i); if (fi >= 0) S.felled.splice(fi, 1);
+    chunks.delete(Math.floor(x / CHK) + ',' + Math.floor(y / CHK)); miniBase = null;
+    for (let q = 0; q < 4; q++) particles.push({ x: x + .5, y: y + .5, vx: (Math.random() - .5) * .8, vy: -Math.random() * .6, life: 0, max: .8, r: .08, col: 'rgba(140,190,90,' });
+  }
+}
 UPD.fastbelt = UPD.belt; UPD.drill2 = UPD.drill; UPD.smelter2 = UPD.smelter; UPD.assembler2 = UPD.assembler;
 UPD.pumpjack = (b, dt) => {
   const n = onet(b);
@@ -1235,6 +1284,7 @@ function tick(dt) {
   updateTrains(dt);
   events();
   if ((S.time % .5) < dt) buildGhosts();
+  if ((S.time % 2) < dt) regrowTick();
   const bk = bucket(); bk.sup += supply; bk.dem += demand; bk.n++;
   while (deliv.length && deliv[0].t < S.time - 60) deliv.shift();
 }
@@ -1242,7 +1292,7 @@ function tick(dt) {
 /* ---- events: storms and delivery contracts */
 const CONTRACT_POOL = [
   { i: 'rautalevy', n: 120, lvl: 1 }, { i: 'kuparilevy', n: 100, lvl: 1 }, { i: 'tiili', n: 80, lvl: 1 }, { i: 'hammasratas', n: 50, lvl: 1 },
-  { i: 'kuparikela', n: 80, lvl: 1 }, { i: 'messinki', n: 60, lvl: 2 }, { i: 'teras', n: 50, lvl: 2 }, { i: 'putki', n: 60, lvl: 2 },
+  { i: 'kuparikela', n: 80, lvl: 1 }, { i: 'messinki', n: 60, lvl: 2 }, { i: 'teras', n: 50, lvl: 2 }, { i: 'lankku', n: 120, lvl: 2 }, { i: 'puu', n: 100, lvl: 1 }, { i: 'putki', n: 60, lvl: 2 },
   { i: 'venttiili', n: 25, lvl: 3 }, { i: 'kellokoneisto', n: 10, lvl: 4 }, { i: 'mantamoottori', n: 4, lvl: 5 },
 ];
 const REWARDS = [
@@ -1593,6 +1643,9 @@ function itemShape(name) {
     case 'drop':
       g.beginPath(); g.moveTo(0, -.38); g.bezierCurveTo(.3, -.05, .3, .3, 0, .32); g.bezierCurveTo(-.3, .3, -.3, -.05, 0, -.38); g.fillStyle = c; g.fill(); g.stroke();
       g.fillStyle = 'rgba(160,120,220,.5)'; g.beginPath(); g.ellipse(-.08, .05, .06, .12, -.3, 0, 7); g.fill(); break;
+    case 'plank':
+      for (const [oy, rot] of [[.12, .08], [-.04, -.05], [-.2, .1]]) { g.save(); g.translate(0, oy); g.rotate(rot); rr(-.38, -.07, .76, .14, .02); g.fillStyle = c; g.fill(); g.stroke(); g.strokeStyle = dk; g.lineWidth = .015; g.beginPath(); g.moveTo(-.3, 0); g.lineTo(.3, 0); g.stroke(); g.restore(); g.strokeStyle = dk; g.lineWidth = .05; }
+      break;
     case 'log':
       g.save(); g.rotate(-.35); rr(-.38, -.15, .66, .3, .12); g.fillStyle = c; g.fill(); g.stroke();
       g.strokeStyle = dk; g.lineWidth = .025; g.beginPath(); g.moveTo(-.3, -.05); g.lineTo(.15, -.05); g.moveTo(-.2, .06); g.lineTo(.2, .06); g.stroke();
@@ -1747,6 +1800,27 @@ const DRAW = {
     circle(.27, -.27, .05); g.fillStyle = red ? '#173a1a' : '#6dff7a'; g.fill();
     b._red = red;
     if (b.one) { g.save(); g.rotate(b.d * Math.PI / 2); g.beginPath(); g.moveTo(-.16, .02); g.lineTo(.16, .02); g.lineTo(0, -.2); g.closePath(); g.fillStyle = P.brassL; g.fill(); g.strokeStyle = P.soot; g.lineWidth = .02; g.stroke(); g.restore(); }
+  },
+  saw(b, t) {
+    g.save(); g.rotate(b.d * Math.PI / 2);
+    frame(P.wood, P.woodD); g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(-.06, -.45, .12, .9);
+    g.fillStyle = '#9a6a3c'; g.fillRect(-.12, .05, .24, .38); g.strokeStyle = P.woodD; g.lineWidth = .02; g.strokeRect(-.12, .05, .24, .38);
+    g.restore();
+    const a = (b._a || 0) * 3;
+    g.save(); g.rotate(a); g.beginPath(); for (let k = 0; k < 24; k++) { const an = k / 24 * Math.PI * 2, r = k % 2 ? .27 : .32; g.lineTo(Math.cos(an) * r, Math.sin(an) * r); } g.closePath();
+    const gr = g.createRadialGradient(-.08, -.08, .02, 0, 0, .32); gr.addColorStop(0, '#eef2f5'); gr.addColorStop(1, '#7a838c'); g.fillStyle = gr; g.fill(); g.strokeStyle = '#3a3f45'; g.lineWidth = .02; g.stroke();
+    g.strokeStyle = 'rgba(40,45,50,.5)'; g.lineWidth = .02; for (let k = 0; k < 4; k++) { const an = k * Math.PI / 2; g.beginPath(); g.moveTo(Math.cos(an) * .06, Math.sin(an) * .06); g.lineTo(Math.cos(an + .4) * .2, Math.sin(an + .4) * .2); g.stroke(); }
+    g.restore(); circle(0, 0, .06); g.fillStyle = P.brass; g.fill();
+    arrow(b.d);
+  },
+  lumber(b, t) {
+    rr(-.44, -.44, .88, .88, .06); g.fillStyle = metal('#5a6a3a', -.44, -.44, .44, .44); g.fill(); g.lineWidth = .04; g.strokeStyle = P.woodD; g.stroke();
+    g.beginPath(); g.moveTo(-.4, -.05); g.lineTo(0, -.38); g.lineTo(.4, -.05); g.closePath(); g.fillStyle = P.woodD; g.fill();
+    g.fillStyle = P.wood; g.fillRect(-.32, -.05, .64, .4); g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(-.08, .12, .16, .23);
+    g.fillStyle = '#8a5c32'; for (const [lx, ly] of [[.2, .28], [.28, .2]]) { g.beginPath(); g.ellipse(lx, ly, .12, .05, -.6, 0, 7); g.fill(); }
+    const sw = Math.sin((b._a || 0) * 4) * .7;
+    g.save(); g.translate(-.24, .2); g.rotate(-.8 + sw * (b.act > 0 ? 1 : .1)); g.fillStyle = '#7a5230'; g.fillRect(-.02, -.28, .04, .3); g.fillStyle = P.ironL; g.beginPath(); g.moveTo(-.02, -.28); g.lineTo(.1, -.32); g.lineTo(.1, -.2); g.lineTo(-.02, -.22); g.closePath(); g.fill(); g.restore();
+    arrow(b.d);
   },
   lamp(b, t) {
     circle(0, .28, .14); g.fillStyle = 'rgba(0,0,0,.3)'; g.fill();
@@ -1988,7 +2062,7 @@ function boilerDraw(b, t, big, oil) {
   for (const [x, y] of chims) { circle(x, y, .09); g.fillStyle = P.ironD; g.fill(); circle(x, y, .055); g.fillStyle = P.soot; g.fill(); }
 }
 
-const LODABLE = { belt: 1, fastbelt: 1, drill: 1, drill2: 1, smelter: 1, assembler: 1, chest: 1, splitter: 1, lamp: 1, boiler: 1, bigboiler: 1, oilboiler: 1, smelter2: 1, assembler2: 1, pumpjack: 1, refinery: 1, mast: 1 };
+const LODABLE = { saw: 1, lumber: 1, belt: 1, fastbelt: 1, drill: 1, drill2: 1, smelter: 1, assembler: 1, chest: 1, splitter: 1, lamp: 1, boiler: 1, bigboiler: 1, oilboiler: 1, smelter2: 1, assembler2: 1, pumpjack: 1, refinery: 1, mast: 1 };
 const LOD_CACHE = new Map();
 let lodOn = false;
 function lodSprite(b) {
@@ -2177,6 +2251,7 @@ function render(fdt) {
     if (b.act > 0 || b.t === 'hq') b._a = (b._a || 0) + fdt * 3 * (b.act || .2);
     if (!vis(b)) continue;
     drawB(b, t, 1);
+    if (b === selected && b.t === 'lumber') { g.strokeStyle = 'rgba(140,200,110,.5)'; g.lineWidth = .05; g.setLineDash([.15, .1]); circle(b.x + .5, b.y + .5, BUILD.lumber.radius + .5); g.stroke(); g.setLineDash([]); }
     if (b === selected) {
       const pulse = .6 + .4 * Math.sin(performance.now() / 260);
       g.save(); g.shadowColor = `rgba(255,214,120,${pulse})`; g.shadowBlur = 14 * dpr; g.strokeStyle = `rgba(255,226,150,${.5 + .5 * pulse})`; g.lineWidth = .07;
@@ -2191,6 +2266,7 @@ function render(fdt) {
         if (b.t === 'bigboiler') { smoke(b.x + .24, b.y + .24, 'rgba(225,222,215,'); smoke(b.x + .76, b.y + .24, 'rgba(225,222,215,'); }
         else smoke(b.x + .74, b.y + .26, 'rgba(225,222,215,');
       }
+      if (b.t === 'saw' && b.act > 0 && Math.random() < fdt * 6) particles.push({ x: b.x + .5, y: b.y + .5, vx: (Math.random() - .5) * 1.5, vy: -Math.random(), life: 0, max: .6, r: .05, col: 'rgba(214,170,110,' });
       if (b.t === 'refinery' && b.act > 0 && Math.random() < fdt * 3) smoke(b.x + 1.62, b.y + .2, 'rgba(60,50,60,');
       if (b.t === 'smelter2' && b.act > 0 && Math.random() < fdt * 5) { sparks(b.x + 1 + Math.random() - .5, b.y + 1, 3); if (Math.random() < .5) smoke(b.x + .38, b.y + 1.62, 'rgba(70,62,55,'); }
       if (b.t === 'smelter' && b.act > 0 && Math.random() < fdt * 2.5) { const c = Math.cos(b.d * Math.PI / 2), sn = Math.sin(b.d * Math.PI / 2); sparks(b.x + .5 + .3 * sn, b.y + .5 - .3 * c, 3); }
@@ -2277,6 +2353,7 @@ function render(fdt) {
         if (tool === 'tunnel') { g.globalAlpha = .6; tunnelArch(gb); g.globalAlpha = 1; }
         if (err && !underOk) { g.fillStyle = 'rgba(224,98,60,.35)'; g.fillRect(hover.x, hover.y, gb.w || 1, gb.h || 1); }
       } else { g.save(); g.translate(hover.x + .5, hover.y + .5); g.globalAlpha = .8; arrow(rot); g.restore(); }
+      if (gb.t === 'lumber') { const R = BUILD.lumber.radius; g.strokeStyle = 'rgba(140,200,110,.6)'; g.lineWidth = .05; g.setLineDash([.15, .1]); circle(hover.x + .5, hover.y + .5, R + .5); g.stroke(); g.setLineDash([]); }
       if (isBoiler(gb)) { // highlight water neighbours
         g.strokeStyle = 'rgba(120,200,220,.6)'; g.lineWidth = .05;
         for (let d = 0; d < 4; d++) { const nx = hover.x + DX[d], ny = hover.y + DY[d]; if (inB(nx, ny) && terrain[idx(nx, ny)] === 1) g.strokeRect(nx + .1, ny + .1, .8, .8); }
@@ -2438,7 +2515,7 @@ function setHTML(el, h) { if (el._h !== h) { el.innerHTML = h; el._h = h; } }
 
 const CATS = [
   { id: 'log', n: 'Logistiikka', tools: ['belt', 'fastbelt', 'tunnel', 'splitter', 'chest', 'lamp'] },
-  { id: 'prod', n: 'Tuotanto', tools: ['drill', 'drill2', 'smelter', 'smelter2', 'assembler', 'assembler2'] },
+  { id: 'prod', n: 'Tuotanto', tools: ['drill', 'drill2', 'smelter', 'smelter2', 'assembler', 'assembler2', 'lumber', 'saw'] },
   { id: 'energy', n: 'Energia ja öljy', tools: ['pipe', 'boiler', 'bigboiler', 'oilpipe', 'pumpjack', 'refinery', 'oilboiler'] },
   { id: 'move', n: 'Liikenne', tools: ['rail', 'signal', 'station', 'train', 'mast', 'zep'] },
   { id: 'dock', n: 'Telakka', tools: ['dock'] },
@@ -2645,12 +2722,18 @@ function renderInfo() {
       h += netKv(b) + kv('Louhii', `${icon(o)} ${ITEMS[o].n}`) + kv('Nopeus', `${Math.round(BUILD[b.t].rate * UP_SPEED[upl(b)] * 60)}/min täydellä paineella`) + kv('Höyry', Math.round(BUILD[b.t].use * UP_STEAM[upl(b)]) + ' yks.') + prog(b.prog);
       break;
     }
-    case 'smelter': case 'smelter2': {
+    case 'lumber': {
+      h += netKv(b) + kv('Säde', `${BUILD.lumber.radius} ruutua`) + kv('Puita varastossa', b.outN) + prog(b.prog);
+      h += '<p class="pat-desc">Kaadetun puun tilalle kasvaa uusi kahdessa minuutissa, jos ruutu on vapaana. Kattilat polttavat puuta, ja sulatto tekee siitä puuhiiltä.</p>';
+      break;
+    }
+    case 'smelter': case 'smelter2': case 'saw': {
       h += netKv(b) + kv('Syöte', b.inT ? `${icon(b.inT)} ${b.inN} × ${ITEMS[b.inT].n}` : '–');
       h += kv('Valmiit', b.outT && b.outN ? `${icon(b.outT)} ${b.outN} × ${ITEMS[b.outT].n}` : '–');
       h += prog(b.prog);
-      h += '<h3>Sulatusohjeet</h3>';
-      for (const k in SMELT) { const r = SMELT[k]; if (S.level < r.lvl) continue; h += kv(`${r.n} × ${ITEMS[k].n}`, `${icon(r.out)} ${ITEMS[r.out].n} (${r.t} s)`); }
+      h += b.t === 'saw' ? '<h3>Sahausohje</h3>' : '<h3>Sulatusohjeet</h3>';
+      const TB = tableOf(b);
+      for (const k in TB) { const r = TB[k]; if (S.level < r.lvl) continue; h += kv(`${r.n} × ${ITEMS[k].n}`, `${icon(r.out)} ${ITEMS[r.out].n} (${r.t} s)`); }
       break;
     }
     case 'assembler': case 'assembler2': {
@@ -2795,6 +2878,8 @@ function doAction(el) {
     case 'import': try { restore(decodeURIComponent(escape(atob($('saveTxt').value.trim())))); $('newg').hidden = true; closeInfo(); renderTools(); renderInv(); renderGoal(); toast('Tallennus ladattu'); save(); } catch (err) { toast('Tekstiä ei voitu lukea tallennukseksi. Tarkista, että kopioit sen kokonaan.'); } return;
     case 'spd': setSpeed(+el.dataset.v); return;
     case 'mute': muted = !muted; try { localStorage.setItem('hoyrytehdas-mute', muted ? '1' : '0'); } catch (e) {} el.textContent = muted ? 'Ääni pois' : 'Ääni päällä'; audio(); if (!muted) { sfx('craft'); startMusic(); } return;
+    case 'slotSave': try { localStorage.setItem(slotKey(el.dataset.v), serialize()); localStorage.setItem(slotKey(el.dataset.v) + '-meta', JSON.stringify({ when: Date.now(), time: S.time, level: S.level, n: blist.length })); toast(`Tallennettu paikkaan ${el.dataset.v}`); } catch (err) { toast('Tallennus ei onnistunut: selaimen tallennustila voi olla täynnä'); } renderSlots(); return;
+    case 'slotLoad': try { const str = localStorage.getItem(slotKey(el.dataset.v)); if (!str) return; restore(str); $('newg').hidden = true; closeInfo(); renderTools(); renderInv(); renderGoal(); save(); toast(`Ladattu paikasta ${el.dataset.v}`); } catch (err) { toast('Tallennusta ei voitu ladata'); } return;
     case 'tutAgain': S.tut = 0; $('newg').hidden = true; renderGoal(); toast('Opastus alkaa alusta'); return;
     case 'alert': jumpAlert(); return;
     case 'rotTool': rot = (rot + 1) % 4; if (selected && selected.t !== 'hq' && selected.t !== 'train') { selected.d = (selected.d + 1) % 4; } return;
@@ -3052,7 +3137,8 @@ function mapTipHTML() {
     const name = b.t === 'hq' ? 'Pääkonttori' : b.t === 'station' ? stationName(b.sid) : b.t === 'mast' ? mastName(b.sid) : BUILD[b.t].n;
     let extra = '';
     if (b.t === 'drill' || b.t === 'drill2') { const o = ORE_ITEM[ore[idx(b.x, b.y)]]; if (o) extra = `Louhii: ${ITEMS[o].n}`; }
-    else if (b.t === 'smelter' || b.t === 'smelter2') extra = b.inT ? `${ITEMS[b.inT].n} ${b.inN} → ${SMELT[b.inT] ? ITEMS[SMELT[b.inT].out].n : ''}` : 'Ei syötettä';
+    else if (b.t === 'smelter' || b.t === 'smelter2' || b.t === 'saw') extra = b.inT ? `${ITEMS[b.inT].n} ${b.inN} → ${tableOf(b)[b.inT] ? ITEMS[tableOf(b)[b.inT].out].n : ''}` : 'Ei syötettä';
+    else if (b.t === 'lumber') extra = `Puita ${b.outN} · säde ${BUILD.lumber.radius}`;
     else if (b.t === 'assembler' || b.t === 'assembler2') extra = b.rec ? `Resepti: ${ITEMS[b.rec].n}` : 'Ei reseptiä';
     else if (isBoiler(b)) extra = b.t === 'oilboiler' ? `Öljyä ${Math.round(onet(b)?.amt || 0)}` : `Hiiltä ${b.fuel}, puuta ${b.wood || 0} / ${BUILD[b.t].cap}`;
     else if (b.n != null && (b.t === 'chest' || b.t === 'station' || b.t === 'mast')) extra = `Tavaroita ${b.n}`;
@@ -3244,7 +3330,7 @@ function buildMiniBase() {
   }
   x.putImageData(im, 0, 0);
 }
-const MINI_COL = { oilpipe: '#3a3346', pumpjack: '#8a6ab0', refinery: '#6a5f80', oilboiler: '#8a8496', mast: '#ead08a', dock: '#ead08a', smelter2: '#c0563a', assembler2: '#e0935c', tunnel: '#c06d3c', signal: '#6dff7a', lamp: '#ffe9a0', belt: '#9c8250', fastbelt: '#c06d3c', pipe: '#b8693a', rail: '#c8ccd0', station: '#4f8a76', hq: '#ead08a', chest: '#8a5d33', boiler: '#e0935c', bigboiler: '#ead08a' };
+const MINI_COL = { saw: '#c49058', lumber: '#6a8a3a', oilpipe: '#3a3346', pumpjack: '#8a6ab0', refinery: '#6a5f80', oilboiler: '#8a8496', mast: '#ead08a', dock: '#ead08a', smelter2: '#c0563a', assembler2: '#e0935c', tunnel: '#c06d3c', signal: '#6dff7a', lamp: '#ffe9a0', belt: '#9c8250', fastbelt: '#c06d3c', pipe: '#b8693a', rail: '#c8ccd0', station: '#4f8a76', hq: '#ead08a', chest: '#8a5d33', boiler: '#e0935c', bigboiler: '#ead08a' };
 function drawMini() {
   if (!miniBase && terrain) buildMiniBase();
   if ($('mini').hidden || !miniBase || !miniC.offsetWidth) return;
@@ -3323,7 +3409,19 @@ function musicTick() {
     musNext += beat; musBeat++;
   }
 }
+const slotKey = i => `${SAVE_KEY}-slot${i}`;
+function renderSlots() {
+  let h = '';
+  for (let i = 1; i <= 3; i++) {
+    let meta = null; try { meta = JSON.parse(localStorage.getItem(slotKey(i) + '-meta') || 'null'); } catch (e) {}
+    const when = meta ? new Date(meta.when).toLocaleString('fi-FI', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    h += `<div class="slot"><div><b>Paikka ${i}</b><br><span>${meta ? `Patentteja ${meta.level} / 5 · peliaika ${fmtTime(meta.time)} · ${meta.n} rakennusta · ${when}` : 'Tyhjä'}</span></div>
+      <button class="sbtn" data-a="slotSave" data-v="${i}">Tallenna</button><button class="sbtn" data-a="slotLoad" data-v="${i}" ${meta ? '' : 'disabled'}>Lataa</button></div>`;
+  }
+  $('slots').innerHTML = h;
+}
 function syncSettings() {
+  renderSlots();
   $('setVol').value = PREF.vol; $('setMusic').checked = PREF.music; $('setMusicVol').value = PREF.musicVol;
   $('setNight').checked = !S.noNight; $('setAuto').value = String(PREF.autosave);
 }
