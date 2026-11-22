@@ -132,6 +132,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 #mtip .mut { color: var(--muted); }
 .contract { margin: -2px 0 12px; padding: 2px 12px 10px; border: 1px solid var(--copper); border-radius: 5px; background: rgba(192,109,60,.08); }
 .contract h3 { margin-top: 8px; }
+.cfill { width: 100%; margin: 6px 0 2px; padding: 5px 8px; }
 .cmode { display: flex; gap: 4px; margin: 6px 0 4px; }
 .hint { margin-top: 10px; padding: 8px 10px; border-left: 3px solid var(--copper); background: rgba(192,109,60,.1); font-size: 13px; line-height: 1.4; }
 
@@ -413,7 +414,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.14';
+const VERSION = '0.15';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -2806,6 +2807,8 @@ function renderGoal() {
     h += `<div class="contract"><h3>Tilaus · ${fmtTime(Math.max(0, c.end - S.time))} jäljellä</h3><div class="req" data-item="${c.i}">${icon(c.i)}<span>${ITEMS[c.i].n}</span><span>${c.got} / ${c.n}</span><div class="bar"><i style="width:${f * 100}%"></i></div></div>`;
     const md = c.mode || 'half';
     h += `<div class="rate">Palkkio: ${Object.keys(c.rew).map(k => `${c.rew[k]} ${ITEMS[k].n.toLowerCase()}`).join(', ')}.</div>`;
+    const fromInv = Math.min(S.inv[c.i] || 0, c.n - c.got);
+    h += `<button class="sbtn cfill" data-a="cfill" ${fromInv > 0 ? '' : 'disabled'}>${fromInv > 0 ? `Toimita varastosta ${fromInv} × ${lc(c.i)}` : `Varastossa ei ole: ${lc(c.i)}`}</button>`;
     h += `<div class="cmode" role="group" aria-label="Toimitusten jako">${[['half', 'Puolet'], ['all', 'Kaikki'], ['off', 'Tauolla']].map(([v, l]) => `<button class="sbtn${md === v ? ' on' : ''}" data-a="cmode" data-v="${v}">${l}</button>`).join('')}</div>`;
     h += `<div class="rate">${md === 'half' ? `Joka toinen ${ITEMS[c.i].n.toLowerCase()} menee tilaukselle, loput varastoon.` : md === 'all' ? `Kaikki toimitettu ${ITEMS[c.i].n.toLowerCase()} menee tilaukselle, eikä varasto kasva.` : 'Tilaus ei ota toimituksia. Aika kuluu silti.'}</div></div>`;
   }
@@ -3044,6 +3047,13 @@ function doAction(el) {
     } break;
     case 'stats': toggleStats(); return;
     case 'book': toggleBook(); return;
+    case 'cfill': {
+      const c = S.contract; if (!c) return;
+      const n = Math.min(S.inv[c.i] || 0, c.n - c.got); if (n <= 0) return;
+      pay({ [c.i]: n }); c.got += n; sfx('craft'); toast(`Toimitettiin varastosta ${n} × ${lc(c.i)}`);
+      if (c.got >= c.n) contractDone();
+      renderGoal(); renderInv(); return;
+    }
     case 'cmode': if (S.contract) { S.contract.mode = el.dataset.v; renderGoal(); } return;
     case 'tutSkip': S.tut = TUT.length; tutTarget = null; renderGoal(); return;
     case 'cat': curCat = el.dataset.v; renderTools(); return;
