@@ -167,6 +167,13 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
   position: fixed; z-index: 20; pointer-events: none; max-width: 260px; padding: 8px 10px; font-size: 13px; line-height: 1.35;
   background: rgba(16,12,9,.96); border: 1px solid var(--brass-dark); border-radius: 4px;
 }
+#tip { max-width: 320px; }
+#tip .ih { margin-top: 8px; font-family: var(--display); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--brass); }
+#tip .il { margin-top: 3px; padding-left: 10px; position: relative; }
+#tip .il::before { content: ""; position: absolute; left: 0; top: .55em; width: 4px; height: 4px; border-radius: 50%; background: var(--brass-dark); }
+#tip .kk, .book .kk { font-size: 11px; color: var(--brass); border: 1px solid var(--brass-dark); border-radius: 3px; padding: 0 4px; white-space: nowrap; }
+#tip .lock, .book .lock { color: var(--warn); }
+[data-item] { cursor: help; }
 #tip b { color: var(--brass-light); font-family: var(--display); font-size: 13px; letter-spacing: .05em; }
 #tip .cost { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px 10px; font-variant-numeric: tabular-nums; }
 #tip .cost span { display: inline-flex; align-items: center; gap: 3px; }
@@ -238,6 +245,12 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 .set input[type=range] { width: 100%; accent-color: var(--brass); }
 .set input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--brass); }
 .set select { background: #120e0b; color: var(--parchment); border: 1px solid var(--brass-dark); border-radius: 4px; padding: 4px 6px; font: inherit; }
+.book { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; margin-bottom: 4px; }
+.book .bk { border: 1px solid #3a2e22; border-radius: 5px; padding: 10px 12px; font-size: 13px; line-height: 1.4; }
+.book .bk h4 { margin: 0 0 4px; display: flex; align-items: center; gap: 8px; font-family: var(--display); color: var(--brass-light); font-size: 14px; letter-spacing: .04em; }
+.book .bk h4 img { width: 24px; height: 24px; }
+.book .ih { font-family: var(--display); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--brass); margin-top: 6px; }
+.book .il { color: var(--parchment); margin-top: 2px; }
 .slots { display: grid; gap: 8px; }
 .slot { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid #3a2e22; border-radius: 4px; font-size: 13px; }
 .slot b { font-family: var(--display); color: var(--brass-light); font-size: 13px; }
@@ -270,6 +283,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
   </div>
   <span id="clock">0:00</span>
   <button class="tbtn" data-a="mute" id="muteBtn">Ääni päällä</button>
+  <button class="tbtn" data-a="book">Tuotekirja</button>
   <button class="tbtn" data-a="stats">Tilastot</button>
   <button class="tbtn" id="bHelp">Ohjeet</button>
   <button class="tbtn" id="bSave">Tallenna</button>
@@ -307,6 +321,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <kbd>Z X C V B</kbd><span>Valitse alapalkin luokka: Logistiikka, Tuotanto, Energia ja öljy, Liikenne, Telakka</span>
       <kbd>1 – 9</kbd><span>Valitse kortti avoimesta luokasta. Numerot seuraavat näkyviä kortteja vasemmalta oikealle</span>
       <kbd>I</kbd><span>Tuotantotilastot</span>
+      <kbd>K</kbd><span>Tuotekirja: mistä jokaisen tuotteen saa ja mihin sitä käytetään. Saman tiedon näkee myös osoittamalla tuotetta missä tahansa</span>
       <kbd>Vasen hiiri</kbd><span>Rakenna. Kuljettimet: vedä hiirellä, suunta seuraa vetoa</span>
       <kbd>Oikea hiiri</kbd><span>Pura rakennus (materiaalit palautuvat)</span>
       <kbd>R</kbd><span>Käännä (Shift+R vastapäivään)</span>
@@ -329,6 +344,15 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       Kone syöttää tuotteensa nuolen suuntaan. Kuljetin syöttää koneeseen, jota se osoittaa. Putket, kattilat ja vierekkäiset koneet muodostavat höyryverkon. Jos verkon höyry ei riitä, sen koneet hidastuvat. Höyryputken voi vetää kuljettimen tai raiteen alta: rakenna putki suoraan niiden päälle. Jos materiaalit eivät riitä, rakennus jää suunnitelmaksi ja valmistuu itsestään, kun tavarat saapuvat. Puuttuvat hammasrattaat, kuparikelat ja putket valmistetaan tarvittaessa käsin levyistä.
     </div>
     <button class="big" data-a="closeHelp">Aloita</button>
+  </div>
+</div>
+
+<div id="book" class="modal" hidden>
+  <div class="panel wide">
+    <h1>Tuotekirja</h1>
+    <p class="lead">Kaikki laakson tuotteet tuotantoketjun järjestyksessä: mistä niitä saa ja mihin niitä tarvitaan. Lukitut reseptit kertovat, minkä patentin takana ne ovat.</p>
+    <div id="bookList" class="book"></div>
+    <button class="big" data-a="book">Sulje</button>
   </div>
 </div>
 
@@ -389,7 +413,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.12';
+const VERSION = '0.13';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -2521,7 +2545,52 @@ function drawGauge() {
    UI
    ========================================================= */
 const $ = id => document.getElementById(id);
-const icon = (k, cls = 'ic') => `<img class="${cls}" src="${IURL[k]}" alt="">`;
+const icon = (k, cls = 'ic') => `<img class="${cls}" src="${IURL[k]}" alt="" data-item="${k}">`;
+// ---- item knowledge: where an item comes from and what it is used for
+const ORE_LOOK = { rautamalmi: 'sinertäviä kiviä', kuparimalmi: 'oransseja kiviä', hiili: 'mustia kiviä', kivi: 'vaaleita kiviä', sinkkimalmi: 'vaaleanvihreitä kiteitä' };
+const lc = k => ITEMS[k].n.toLowerCase();
+const bn = t => `<b>${BUILD[t].n}</b>${kh(t) ? ` <span class="kk">${kh(t)}</span>` : ''}`;
+function lockNote(lvl) { return lvl > S.level ? ` <span class="lock">avautuu patentista ${lvl}: ${PATENTS[lvl - 1].n}</span>` : ''; }
+function itemSources(k) {
+  const out = [];
+  if (ORE_ITEM.includes(k)) out.push(`Aseta ${bn('drill')} esiintymän päälle (${ORE_LOOK[k]} maassa). Esiintymää voi myös louhia käsin klikkaamalla sitä.`);
+  if (k === 'puu') out.push(`Kaada puu klikkaamalla metsää tai rakenna ${bn('lumber')}.${lockNote(BUILD.lumber.lvl)} Rakentaminen metsään kaataa puut automaattisesti.`);
+  if (k === 'raakaoljy') out.push(`${bn('pumpjack')} öljylähteen päällä pumppaa raakaöljyä öljyputkistoon.${lockNote(BUILD.pumpjack.lvl)}`);
+  if (k === 'voiteluoljy') out.push(`${bn('refinery')}: 20 × raakaöljy → 2 × voiteluöljy (3 s).${lockNote(BUILD.refinery.lvl)}`);
+  for (const i in SMELT) { const r = SMELT[i]; if (r.out === k) out.push(`${bn('smelter')} tai Masuuni: ${r.n} × ${lc(i)} → ${r.k} × ${lc(k)} (${r.t} s).${lockNote(r.lvl)}`); }
+  for (const i in SAW) { const r = SAW[i]; if (r.out === k) out.push(`${bn('saw')}: ${r.n} × ${lc(i)} → ${r.k} × ${lc(k)} (${r.t} s).${lockNote(Math.max(r.lvl, BUILD.saw.lvl))}`); }
+  const r = RECIPES[k];
+  if (r) out.push(`${bn('assembler')} tai Tehdashalli: ${Object.keys(r.in).map(i => `${r.in[i]} × ${lc(i)}`).join(' + ')} → ${r.k} × ${lc(k)} (${r.t} s). Valitse resepti klikkaamalla konetta.${lockNote(Math.max(r.lvl, BUILD.assembler.lvl))}${r.hand && S.level >= r.lvl ? ' Onnistuu myös käsityönä vasemmasta paneelista.' : ''}`);
+  return out;
+}
+function itemUses(k) {
+  const out = [];
+  if (k === 'hiili' || k === 'puu') out.push('Kattiloiden polttoaine' + (k === 'puu' ? ' (palaa puolet nopeammin kuin hiili)' : ''));
+  if (k === 'raakaoljy') out.push('Öljykattilan polttoaine ja jalostamon raaka-aine');
+  const rec = Object.keys(RECIPES).filter(o => RECIPES[o].in[k]).map(o => ITEMS[o].n);
+  const sm = Object.keys(SMELT).filter(i => i === k).map(i => ITEMS[SMELT[i].out].n).concat(Object.keys(SAW).filter(i => i === k).map(i => ITEMS[SAW[i].out].n));
+  if (rec.length || sm.length) out.push('Valmistetaan: ' + [...new Set([...sm, ...rec])].join(', '));
+  const bl = TOOL_ORDER.filter(t => BUILD[t].cost[k]).map(t => BUILD[t].n);
+  if (bl.length) out.push('Rakennukset: ' + (bl.length > 6 ? bl.slice(0, 6).join(', ') + ` ja ${bl.length - 6} muuta` : bl.join(', ')));
+  const pt = PATENTS.map((p, i) => p.cost[k] && i >= S.level ? `${i + 1}. ${p.n} (${p.cost[k]})` : null).filter(Boolean);
+  if (pt.length) out.push('Patentit: ' + pt.join(', '));
+  const dk = DOCK_STAGES.filter(st => st.cost[k]).map(st => `${st.n} (${st.cost[k]})`);
+  if (dk.length) out.push('Telakka: ' + dk.join(', '));
+  return out;
+}
+function itemInfoHTML(k) {
+  const src = itemSources(k), use = itemUses(k);
+  return `<b>${ITEMS[k].n}</b>${S.inv[k] ? ` <span class="rate">· varastossa ${fmt(S.inv[k])}</span>` : ''}
+    ${src.length ? `<div class="ih">Mistä saa</div>${src.map(x => `<div class="il">${x}</div>`).join('')}` : ''}
+    ${use.length ? `<div class="ih">Käyttö</div>${use.map(x => `<div class="il">${x}</div>`).join('')}` : ''}`;
+}
+let tipItemEl = null;
+document.addEventListener('pointerover', e => {
+  const el = e.target.closest && e.target.closest('[data-item]');
+  if (el && el.closest('#tip')) return;
+  if (el) { if (el !== tipItemEl) { tipItemEl = el; showTip(el, itemInfoHTML(el.dataset.item)); } return; }
+  if (tipItemEl) { tipItemEl = null; if (!(e.target.closest && e.target.closest('[data-tool]'))) $('tip').hidden = true; }
+});
 function toast(msg) { const d = document.createElement('div'); d.textContent = msg; $('toast').appendChild(d); setTimeout(() => d.remove(), 3300); }
 function setHTML(el, h) { if (el._h !== h) { el.innerHTML = h; el._h = h; } }
 
@@ -2564,8 +2633,16 @@ function costHTML(cost) {
 function showTip(el, html) {
   const tip = $('tip'); tip.innerHTML = html; tip.hidden = false;
   const r = el.getBoundingClientRect(), tr = tip.getBoundingClientRect();
+  const side = el.closest('#invP') ? 'right' : el.closest('#goalP, #info') ? 'left' : null;
+  if (side && innerWidth > 760) {
+    const pr = el.closest('.panel').getBoundingClientRect();
+    tip.style.left = (side === 'right' ? pr.right + 8 : pr.left - tr.width - 8) + 'px';
+    tip.style.top = Math.max(8, Math.min(innerHeight - tr.height - 8, r.top + r.height / 2 - tr.height / 2)) + 'px';
+    return;
+  }
   tip.style.left = Math.max(8, Math.min(innerWidth - tr.width - 8, r.left + r.width / 2 - tr.width / 2)) + 'px';
-  tip.style.top = Math.max(8, r.top - tr.height - 8) + 'px';
+  const above = r.top - tr.height - 8;
+  tip.style.top = (above >= 8 ? above : Math.min(innerHeight - tr.height - 8, r.bottom + 8)) + 'px';
 }
 $('tools').addEventListener('pointerover', e => {
   const b = e.target.closest('[data-tool]'); if (!b) return;
@@ -2589,13 +2666,13 @@ function selectTool(k) {
 
 function renderInv() {
   const keys = Object.keys(ITEMS).filter(k => S.inv[k] > 0);
-  let h = keys.length ? keys.map(k => `<div class="irow">${icon(k)}<span class="n">${ITEMS[k].n}</span><span class="c">${fmt(S.inv[k])}</span></div>`).join('') : '<div class="empty">Varasto on tyhjä.</div>';
+  let h = keys.length ? keys.map(k => `<div class="irow" data-item="${k}">${icon(k)}<span class="n">${ITEMS[k].n}</span><span class="c">${fmt(S.inv[k])}</span></div>`).join('') : '<div class="empty">Varasto on tyhjä.</div>';
   setHTML($('invList'), h);
   let c = '';
   for (const k in RECIPES) {
     const r = RECIPES[k]; if (!r.hand || S.level < r.lvl) continue;
     const ins = Object.keys(r.in).map(i => `${r.in[i]} ${ITEMS[i].n.toLowerCase()}`).join(', ');
-    c += `<div class="craft">${icon(k)}<span>${ITEMS[k].n}${r.k > 1 ? ' ×' + r.k : ''}<small>${ins}</small></span>
+    c += `<div class="craft" data-item="${k}">${icon(k)}<span>${ITEMS[k].n}${r.k > 1 ? ' ×' + r.k : ''}<small>${ins}</small></span>
       <button class="sbtn" data-a="craft" data-v="${k}" data-n="1" ${canAfford(r.in) ? '' : 'disabled'}>+1</button>
       <button class="sbtn" data-a="craft" data-v="${k}" data-n="10" ${canAfford(r.in, 10) ? '' : 'disabled'}>+10</button></div>`;
   }
@@ -2674,7 +2751,7 @@ function renderGoal() {
   const c = S.contract;
   if (c) {
     const f = c.got / c.n;
-    h += `<div class="contract"><h3>Tilaus · ${fmtTime(Math.max(0, c.end - S.time))} jäljellä</h3><div class="req">${icon(c.i)}<span>${ITEMS[c.i].n}</span><span>${c.got} / ${c.n}</span><div class="bar"><i style="width:${f * 100}%"></i></div></div>`;
+    h += `<div class="contract"><h3>Tilaus · ${fmtTime(Math.max(0, c.end - S.time))} jäljellä</h3><div class="req" data-item="${c.i}">${icon(c.i)}<span>${ITEMS[c.i].n}</span><span>${c.got} / ${c.n}</span><div class="bar"><i style="width:${f * 100}%"></i></div></div>`;
     const md = c.mode || 'half';
     h += `<div class="rate">Palkkio: ${Object.keys(c.rew).map(k => `${c.rew[k]} ${ITEMS[k].n.toLowerCase()}`).join(', ')}.</div>`;
     h += `<div class="cmode" role="group" aria-label="Toimitusten jako">${[['half', 'Puolet'], ['all', 'Kaikki'], ['off', 'Tauolla']].map(([v, l]) => `<button class="sbtn${md === v ? ' on' : ''}" data-a="cmode" data-v="${v}">${l}</button>`).join('')}</div>`;
@@ -2692,7 +2769,7 @@ function renderGoal() {
     h += `<div class="pat-no">Patentti ${S.level + 1} / ${PATENTS.length}</div><p class="pat-name">${p.n}</p><p class="pat-desc">${p.d}</p>`;
     for (const k in p.cost) {
       const have = S.inv[k] || 0, need = p.cost[k], f = Math.min(1, have / need), r = delivRate(k);
-      h += `<div class="req">${icon(k)}<span>${ITEMS[k].n}${r ? ` <span class="rate">+${r}/min</span>` : ''}</span><span>${fmt(Math.min(have, need))} / ${need}</span><div class="bar"><i class="${f >= 1 ? 'done' : ''}" style="width:${f * 100}%"></i></div></div>`;
+      h += `<div class="req" data-item="${k}">${icon(k)}<span>${ITEMS[k].n}${r ? ` <span class="rate">+${r}/min</span>` : ''}</span><span>${fmt(Math.min(have, need))} / ${need}</span><div class="bar"><i class="${f >= 1 ? 'done' : ''}" style="width:${f * 100}%"></i></div></div>`;
     }
     h += `<div class="unl">Avaa: ${p.unl}</div>`;
     h += `<button class="big" data-a="patent" ${canAfford(p.cost) ? '' : 'disabled'}>Hae patenttia</button>`;
@@ -2761,7 +2838,7 @@ function renderInfo() {
     }
     case 'assembler': case 'assembler2': {
       h += netKv(b) + '<h3>Resepti</h3><div class="recs">';
-      for (const k in RECIPES) { if (S.level < RECIPES[k].lvl) continue; h += `<button class="${b.rec === k ? 'on' : ''}" data-a="rec" data-v="${k}">${icon(k)}${ITEMS[k].n}</button>`; }
+      for (const k in RECIPES) { if (S.level < RECIPES[k].lvl) continue; h += `<button class="${b.rec === k ? 'on' : ''}" data-a="rec" data-v="${k}" data-item="${k}">${icon(k)}${ITEMS[k].n}</button>`; }
       h += '</div>';
       const r = RECIPES[b.rec];
       if (r) {
@@ -2780,7 +2857,7 @@ function renderInfo() {
     case 'chest': {
       h += kv('Täyttöaste', `${b.n} / 400`);
       const ks = Object.keys(b.inv);
-      h += ks.length ? ks.map(k => `<div class="irow">${icon(k)}<span class="n">${ITEMS[k].n}</span><span class="c">${b.inv[k]}</span></div>`).join('') : '<div class="empty">Tyhjä</div>';
+      h += ks.length ? ks.map(k => `<div class="irow" data-item="${k}">${icon(k)}<span class="n">${ITEMS[k].n}</span><span class="c">${b.inv[k]}</span></div>`).join('') : '<div class="empty">Tyhjä</div>';
       h += `<div class="acts"><button class="sbtn" data-a="chestOut">Syöttö eteenpäin: ${b.outOn ? 'päällä' : 'pois'}</button><button class="sbtn" data-a="chestTake" ${b.n ? '' : 'disabled'}>Siirrä varastoon</button></div>`;
       break;
     }
@@ -2794,7 +2871,7 @@ function renderInfo() {
       const m = mastsList().find(x => x.sid === b.tgt);
       if (b.st === 'fly' && m) h += kv('Kohde', mastName(m.sid));
       h += kv('Lasti', `${b.n} / ${BUILD.zep.cap}`) + prog(b.n / BUILD.zep.cap);
-      h += Object.keys(b.inv).map(k => `<div class="irow">${icon(k)}<span class="n">${ITEMS[k].n}</span><span class="c">${b.inv[k]}</span></div>`).join('');
+      h += Object.keys(b.inv).map(k => `<div class="irow" data-item="${k}">${icon(k)}<span class="n">${ITEMS[k].n}</span><span class="c">${b.inv[k]}</span></div>`).join('');
       h += '<p class="pat-desc">Kiertää kaikki rahtimastot kirjainjärjestyksessä. Lastausmastolla odottaa, kunnes lasti on täynnä tai mastolla ei ole tavaraa neljään sekuntiin.</p>';
       h += `<div class="acts"><button class="sbtn" data-a="delZep">Pura ilmalaiva</button></div>`;
       setHTML($('info'), fillKeys(h)); return;
@@ -2802,7 +2879,7 @@ function renderInfo() {
     case 'mast': {
       h += `<div class="acts" style="margin-top:0"><button class="sbtn${b.mode === 'load' ? ' on' : ''}" data-a="mode" data-v="load">Lastaus</button><button class="sbtn${b.mode === 'unload' ? ' on' : ''}" data-a="mode" data-v="unload">Purku</button></div>`;
       h += kv('Täyttöaste', `${b.n} / 400`) + kv('Ilmalaivoja', zeps.filter(z => z.tgt === b.sid).length);
-      h += Object.keys(b.inv).map(k => `<div class="irow">${icon(k)}<span class="n">${ITEMS[k].n}</span><span class="c">${b.inv[k]}</span></div>`).join('');
+      h += Object.keys(b.inv).map(k => `<div class="irow" data-item="${k}">${icon(k)}<span class="n">${ITEMS[k].n}</span><span class="c">${b.inv[k]}</span></div>`).join('');
       if (mastsList().length < 2) h += '<p class="pat-desc">Rakenna toinen masto, niin ilmalaivat voivat aloittaa liikenteen.</p>';
       break;
     }
@@ -2821,7 +2898,7 @@ function renderInfo() {
       DOCK_STAGES.forEach((st, i) => {
         const done = i < b.stage, cur = i === b.stage;
         h += `<h3>${i + 1}. ${st.n}${done ? ' · valmis' : ''}</h3>`;
-        if (cur) for (const k in st.cost) { const have = b.got[k] || 0, f = have / st.cost[k]; h += `<div class="req">${icon(k)}<span>${ITEMS[k].n}</span><span>${have} / ${st.cost[k]}</span><div class="bar"><i class="${f >= 1 ? 'done' : ''}" style="width:${f * 100}%"></i></div></div>`; }
+        if (cur) for (const k in st.cost) { const have = b.got[k] || 0, f = have / st.cost[k]; h += `<div class="req" data-item="${k}">${icon(k)}<span>${ITEMS[k].n}</span><span>${have} / ${st.cost[k]}</span><div class="bar"><i class="${f >= 1 ? 'done' : ''}" style="width:${f * 100}%"></i></div></div>`; }
         else if (!done) h += `<div class="rate">${st.d}</div>`;
       });
       break;
@@ -2838,13 +2915,13 @@ function renderInfo() {
       h += `<p class="pat-desc">${b.mode === 'load' ? 'Kuljettimet syöttävät tavarat asemalle, veturi lastaa ne.' : 'Veturi purkaa lastin, asema syöttää sen nuolen suuntaan.'}</p>`;
       h += kv('Täyttöaste', `${b.n} / 300`);
       const ks = Object.keys(b.inv);
-      h += ks.map(k => `<div class="irow">${icon(k)}<span class="n">${ITEMS[k].n}</span><span class="c">${b.inv[k]}</span></div>`).join('');
+      h += ks.map(k => `<div class="irow" data-item="${k}">${icon(k)}<span class="n">${ITEMS[k].n}</span><span class="c">${b.inv[k]}</span></div>`).join('');
       break;
     }
     case 'train': {
       h += kv('Lasti', `${b.n} / ${BUILD.train.cap}`) + prog(b.n / BUILD.train.cap);
       const ks = Object.keys(b.inv);
-      h += ks.map(k => `<div class="irow">${icon(k)}<span class="n">${ITEMS[k].n}</span><span class="c">${b.inv[k]}</span></div>`).join('');
+      h += ks.map(k => `<div class="irow" data-item="${k}">${icon(k)}<span class="n">${ITEMS[k].n}</span><span class="c">${b.inv[k]}</span></div>`).join('');
       const all = blist.filter(x => x.t === 'station').sort((a, c) => a.sid - c.sid);
       h += '<h3>Aikataulu</h3>' + (all.length ? all.map(st => `<label class="kv"><span>${stationName(st.sid)} · ${st.mode === 'load' ? 'lastaus' : 'purku'}</span><button class="sbtn" data-a="sch" data-v="${st.sid}">${!b.sched || b.sched.includes(st.sid) ? 'Mukana' : 'Ohitetaan'}</button></label>`).join('') : '<div class="empty">Ei asemia. Rakenna Asema{k:station} radan varrelle.</div>');
       break;
@@ -2861,7 +2938,7 @@ function renderInfo() {
       h += '<p class="pat-desc">Kaikki tänne kuljetettu siirtyy varastoosi. Kuljettimet voivat tulla mistä tahansa sivusta.</p>';
       const cnt = {}, toC = {}; for (const d of deliv) { cnt[d.i] = (cnt[d.i] || 0) + 1; if (d.c) toC[d.i] = (toC[d.i] || 0) + 1; }
       const ks = Object.keys(cnt);
-      h += '<h3>Toimitukset / min</h3>' + (ks.length ? ks.map(k => `<div class="irow">${icon(k)}<span class="n">${ITEMS[k].n}${toC[k] ? ` <span class="rate">(${toC[k]} tilaukselle)</span>` : ''}</span><span class="c">${cnt[k]}</span></div>`).join('') : '<div class="empty">Ei toimituksia viimeisen minuutin aikana.</div>');
+      h += '<h3>Toimitukset / min</h3>' + (ks.length ? ks.map(k => `<div class="irow" data-item="${k}">${icon(k)}<span class="n">${ITEMS[k].n}${toC[k] ? ` <span class="rate">(${toC[k]} tilaukselle)</span>` : ''}</span><span class="c">${cnt[k]}</span></div>`).join('') : '<div class="empty">Ei toimituksia viimeisen minuutin aikana.</div>');
       break;
     }
   }
@@ -2913,6 +2990,7 @@ function doAction(el) {
       b.sched = sc.length === all.length ? null : sc;
     } break;
     case 'stats': toggleStats(); return;
+    case 'book': toggleBook(); return;
     case 'cmode': if (S.contract) { S.contract.mode = el.dataset.v; renderGoal(); } return;
     case 'tutSkip': S.tut = TUT.length; tutTarget = null; renderGoal(); return;
     case 'cat': curCat = el.dataset.v; renderTools(); return;
@@ -2944,6 +3022,13 @@ $('bSave').onclick = () => { if (save()) toast('Peli tallennettu'); else toast('
 // ---- statistics view
 const C_SUP = '#b48420', C_DEM = '#2f9ccf';
 let chartHover = -1;
+const BOOK_ORDER = ['rautamalmi', 'kuparimalmi', 'hiili', 'kivi', 'puu', 'sinkkimalmi', 'rautalevy', 'kuparilevy', 'tiili', 'lankku', 'sinkki', 'hammasratas', 'kuparikela', 'putki', 'messinki', 'teras', 'venttiili', 'kellokoneisto', 'raakaoljy', 'voiteluoljy', 'mantamoottori'];
+function toggleBook() {
+  const m = $('book'); m.hidden = !m.hidden; if (m.hidden) return;
+  const keys = BOOK_ORDER.concat(Object.keys(ITEMS).filter(k => !BOOK_ORDER.includes(k)));
+  $('bookList').innerHTML = keys.map(k => { const src = itemSources(k), use = itemUses(k);
+    return `<div class="bk"><h4>${icon(k)}${ITEMS[k].n}</h4>${src.length ? `<div class="ih">Mistä saa</div>${src.map(x => `<div class="il">${x}</div>`).join('')}` : ''}${use.length ? `<div class="ih">Käyttö</div>${use.map(x => `<div class="il">${x}</div>`).join('')}` : ''}</div>`; }).join('');
+}
 function toggleStats() { $('stats').hidden = !$('stats').hidden; if (!$('stats').hidden) renderStats(); }
 function series() {
   const cur = Math.floor(S.time / 10), out = [];
@@ -3010,7 +3095,7 @@ function renderStats() {
   const f = v => v >= 100 ? Math.round(v) : v.toFixed(1).replace('.', ',');
   const body = rows.length ? rows.map(k => {
     const pr = rateOf(k, 'p'), co = rateOf(k, 'c');
-    return `<tr><td><span>${icon(k)}${ITEMS[k].n}</span></td><td>${f(pr)}</td><td class="${co > pr + .05 ? 'neg' : ''}">${f(co)}</td><td>${fmt(S.inv[k] || 0)}</td><td><canvas data-k="${k}"></canvas></td></tr>`;
+    return `<tr data-item="${k}"><td><span>${icon(k)}${ITEMS[k].n}</span></td><td>${f(pr)}</td><td class="${co > pr + .05 ? 'neg' : ''}">${f(co)}</td><td>${fmt(S.inv[k] || 0)}</td><td><canvas data-k="${k}"></canvas></td></tr>`;
   }).join('') : '<tr><td colspan="5" class="empty">Ei vielä tuotantoa. Rakenna pora ja kattila, niin luvut alkavat kertyä.</td></tr>';
   $('statTbl').tBodies[0].innerHTML = body;
   for (const c of $('statTbl').querySelectorAll('canvas[data-k]')) spark(c, ser.map(b => (b && b.p[c.dataset.k] || 0) * 6));
@@ -3264,7 +3349,7 @@ const keys = new Set();
 window.addEventListener('keydown', e => {
   if (e.target.closest && e.target.closest('input,textarea')) return;
   const k = e.key.toLowerCase();
-  if (!$('help').hidden || !$('newg').hidden || !$('stats').hidden) { if (k === 'escape' || (k === 'i' && !$('stats').hidden)) { $('help').hidden = true; $('newg').hidden = true; $('stats').hidden = true; } return; }
+  if (!$('help').hidden || !$('newg').hidden || !$('stats').hidden || !$('book').hidden) { if (k === 'escape' || (k === 'i' && !$('stats').hidden) || (k === 'k' && !$('book').hidden)) { $('help').hidden = true; $('newg').hidden = true; $('stats').hidden = true; $('book').hidden = true; } return; }
   keys.add(k);
   if (k === 'r') {
     const b = !tool && hover && inB(hover.x, hover.y) ? grid[idx(hover.x, hover.y)] : null;
@@ -3282,6 +3367,7 @@ window.addEventListener('keydown', e => {
   else if (k === 'delete' || k === 'backspace') { e.preventDefault(); selectTool('remove'); }
   else if (k === 'h') $('help').hidden = false;
   else if (k === 'i') toggleStats();
+  else if (k === 'k') toggleBook();
   else if (k === 'c' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); selectTool('copy'); }
   else if ((k === 'v' || k === 'b') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); if (S.clip) { tool = null; selectTool('paste'); } }
   else if (!e.ctrlKey && !e.metaKey && !e.altKey && CATS.some(c => c.key.toLowerCase() === k)) {
