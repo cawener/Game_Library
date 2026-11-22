@@ -214,6 +214,11 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 .modal p, .modal li { line-height: 1.5; color: var(--parchment); }
 .modal .lead { color: var(--muted); margin-top: 0; }
 .keys { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: 14px; margin: 10px 0; }
+.htabs { display: flex; gap: 0; margin: 12px 0 4px; border-bottom: 1px solid var(--brass-dark); }
+.htabs button { flex: 0 0 auto; background: none; border: 1px solid transparent; border-bottom: none; border-radius: 5px 5px 0 0; padding: 7px 16px; margin-bottom: -1px; font-family: var(--display); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--parchment); opacity: .7; cursor: pointer; }
+.htabs button.on { opacity: 1; color: var(--brass-light); border-color: var(--brass-dark); background: linear-gradient(#3a2c20, #2a2018); border-bottom: 1px solid #2a2018; }
+.touchKeys kbd { white-space: nowrap; }
+.keys[hidden] { display: none; }
 .keys kbd { align-self: start; justify-self: start; font-family: var(--body); font-weight: 700; color: var(--brass-light); background: #2a2018; border: 1px solid var(--brass-dark); border-radius: 3px; padding: 0 6px; }
 .chain { font-size: 14px; color: var(--muted); border-top: 1px solid #3a2e22; margin-top: 10px; padding-top: 10px; }
 
@@ -288,11 +293,19 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 .sbtn.on { border-color: var(--brass-light); background: #4a3922; color: var(--brass-light); }
 
 #topBtns { display: contents; }
+.menuVer, #steamPop { display: none; }
+#steamPop { position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 20; flex-direction: column; gap: 3px; min-width: 170px; padding: 8px 12px; background: var(--panel); border: 1px solid var(--brass-dark); border-radius: 6px; box-shadow: 0 10px 24px rgba(0,0,0,.6); font-size: 14px; }
+#steamPop div { display: flex; justify-content: space-between; gap: 14px; }
+#steamPop .lbl { opacity: .75; }
 #menuBtn, #mtabs, #tutP { display: none; }
 @media (max-width: 760px) {
   /* phone: compact one-row top bar, menu buttons in a drop-down, side panels as pull-down drawers behind tabs */
   #top { gap: 8px; flex-wrap: nowrap; padding-top: calc(env(safe-area-inset-top, 0px) + 4px); padding-bottom: 4px; }
   #logo, .ver, .steam, #clock { display: none; }
+  #gauge { cursor: pointer; }
+  #top.steamOpen #steamPop { display: flex; }
+  #top.steamOpen { z-index: 30; }
+  #topBtns .menuVer { display: block; text-align: center; font-size: 12px; letter-spacing: .06em; color: var(--brass-light); opacity: .75; padding: 4px 0 0; border-top: 1px solid var(--brass-dark); margin-top: 2px; }
   .brand { font-size: 15px; letter-spacing: .08em; white-space: nowrap; }
   #gauge { width: 38px; height: 38px; }
   .seg button { padding: 5px 7px; font-size: 12px; }
@@ -333,7 +346,8 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 <header id="top">
   <canvas id="logo" width="60" height="60" aria-hidden="true"></canvas>
   <div class="brand">Höyrytehdas <span class="ver" id="ver"></span></div>
-  <canvas id="gauge" width="92" height="92" aria-label="Höyrymittari"></canvas>
+  <canvas id="gauge" width="92" height="92" aria-label="Höyrymittari" role="button" data-a="gaugeTap"></canvas>
+  <div id="steamPop" aria-live="polite"><div><span class="lbl">Höyry</span><b id="steamTxt2">0 / 0</b></div><div><span class="lbl">Paine</span><b id="presTxt2">–</b></div><div><span class="lbl">Aika</span><b id="clock2">0:00</b></div></div>
   <div class="steam"><span class="lbl">Höyry</span><b id="steamTxt">0 / 0</b></div>
   <div class="steam"><span class="lbl">Paine</span><b id="presTxt">–</b></div>
   <div class="spacer"></div>
@@ -351,6 +365,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
     <button class="tbtn" id="bHelp">Ohjeet</button>
     <button class="tbtn" id="bSave">Tallenna</button>
     <button class="tbtn" data-a="menu">Valikko</button>
+    <div class="menuVer" id="verMenu"></div>
   </div>
 </header>
 <nav id="mtabs" aria-label="Paneelit">
@@ -402,7 +417,27 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
         <button class="diff hard" data-a="pickDiff" data-v="hard"><b>Hullu!</b><span>Malmia on vähän ja öljy ehtyy. Porat tyhjentävät ruutunsa 10–30 minuutissa, ja uusia esiintymiä on etsittävä jatkuvasti.</span></button>
       </div>
     </div>
-    <div class="keys">
+    <div class="htabs" role="tablist" aria-label="Ohjeiden laite">
+      <button role="tab" data-a="helpTab" data-v="pc" id="htPc">Tietokone</button>
+      <button role="tab" data-a="helpTab" data-v="phone" id="htPhone">Puhelin</button>
+    </div>
+    <div class="keys touchKeys" id="helpPhone" hidden>
+      <kbd>Vedä yhdellä sormella</kbd><span>Liikuta näkymää</span>
+      <kbd>Nipistä kahdella sormella</kbd><span>Zoomaa lähemmäs tai kauemmas</span>
+      <kbd>Napauta</kbd><span>Tyhjällä kädellä: louhi malmia käsin, kaada puu tai avaa rakennuksen tiedot</span>
+      <kbd>Alapalkki</kbd><span>Ylärivin välilehdet vaihtavat luokkaa (Logistiikka, Tuotanto, Energia ja öljy, Liikenne, Telakka). Napauta korttia valitaksesi rakennuksen ja uudelleen poistaaksesi valinnan. Palkkia voi vierittää sivuttain</span>
+      <kbd>Rakentaminen</kbd><span>1) <b>Valitse paikka</b>: napauta karttaa. 2) <b>Valitse suunta</b>: napauta haluttua nuolta haamun ympärillä. Haamu tai ✓ rakentaa korostettuun suuntaan, ↻ kääntää ja ✕ peruu. Vetäminen liikuttaa näkymää rakennustilassakin</span>
+      <kbd>Kuljettimet ja putket</kbd><span>Kuljettimet, putket, öljyputket ja raiteet rakennetaan vetämällä sormella. Suunta seuraa vetoa</span>
+      <kbd>Pura</kbd><span>Valitse Pura-kortti ja napauta tai vedä rakennusten yli. Materiaalit palautuvat varastoon</span>
+      <kbd>Käännä</kbd><span>Kortti kääntää valittua rakennusta ennen rakentamista tai avattua rakennusta paikallaan</span>
+      <kbd>Kopioi ja Kaavat</kbd><span>Kopioi-kortilla vedä suorakulmio alueen yli. Kaavat-kortista tallennat kaavan nimellä ja liität sen uudelleen napauttamalla karttaa</span>
+      <kbd>Päivitä</kbd><span>Vedä alue: kuljettimet vaihtuvat pikakuljettimiksi ja koneet päivittyvät seuraavalle tasolle</span>
+      <kbd>Liuskat ylhäällä</kbd><span>Opastus, Varasto, Patentit ja Kartta avautuvat laatikoiksi. Napauta liuskaa uudelleen tai karttaa sulkeaksesi. Opastus-liuska näkyy, kunnes opastus on suoritettu tai ohitettu</span>
+      <kbd>Kartta</kbd><span>Napauta tai vedä minikarttaa siirtyäksesi</span>
+      <kbd>☰-valikko</kbd><span>Loki, ääni päälle tai pois, Tuotekirja ja tuotantolaskuri, Tilastot, Ohjeet, Tallenna ja päävalikko</span>
+      <kbd>Tauko ja nopeus</kbd><span>Yläpalkin napit: Tauko, 1×, 2× ja 4×</span>
+    </div>
+    <div class="keys" id="helpPc">
       <kbd>Z X C V B</kbd><span>Valitse alapalkin luokka: Logistiikka, Tuotanto, Energia ja öljy, Liikenne, Telakka</span>
       <kbd>1 – 9</kbd><span>Valitse kortti avoimesta luokasta. Numerot seuraavat näkyviä kortteja vasemmalta oikealle</span>
       <kbd>I</kbd><span>Tuotantotilastot</span>
@@ -527,7 +562,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.26';
+const VERSION = '0.27';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -3401,7 +3436,7 @@ function renderInfo() {
 }
 
 // Delegated actions (pointerdown so panel refreshes can't swallow clicks; click for keyboard)
-function closeTopMenu() { $('top').classList.remove('menuOpen'); $('menuBtn').setAttribute('aria-expanded', 'false'); }
+function closeTopMenu() { $('top').classList.remove('menuOpen', 'steamOpen'); $('menuBtn').setAttribute('aria-expanded', 'false'); }
 function closeDrawers() { for (const b2 of document.querySelectorAll('#mtabs button')) { b2.classList.remove('on'); $(b2.dataset.v).classList.remove('open'); } }
 function doAction(el) {
   if (el.closest('#topBtns') && el.dataset.a !== 'mute') closeTopMenu();
@@ -3409,6 +3444,7 @@ function doAction(el) {
   switch (a) {
     case 'fold': el.closest('.panel').classList.toggle('closed'); el.textContent = el.closest('.panel').classList.contains('closed') ? '+' : '–'; return;
     case 'close': closeInfo(); return;
+    case 'helpTab': setHelpTab(el.dataset.v); return;
     case 'closeHelp': $('help').hidden = true; paused = false; return;
     case 'pickDiff': S.diff = el.dataset.v; delete S.diffPending; $('help').hidden = true; syncHelp(); renderGoal();
       if (innerWidth <= 760 && S.tut === 0) { $('tutP').classList.add('open'); $('tutTab').classList.add('on'); } toast(`Vaikeustaso: ${DIFF[S.diff].n}. ${DIFF[S.diff].d}`); save(); return;
@@ -3450,7 +3486,8 @@ function doAction(el) {
       b.sched = sc.length === all.length ? null : sc;
     } break;
     case 'stats': toggleStats(); closeTopMenu(); return;
-    case 'topMenu': { const open = !$('top').classList.contains('menuOpen'); if (open) closeDrawers(); $('top').classList.toggle('menuOpen', open); $('menuBtn').setAttribute('aria-expanded', open); return; }
+    case 'gaugeTap': { if (innerWidth > 760) return; const open = !$('top').classList.contains('steamOpen'); closeTopMenu(); closeDrawers(); $('top').classList.toggle('steamOpen', open); return; }
+    case 'topMenu': { $('top').classList.remove('steamOpen'); const open = !$('top').classList.contains('menuOpen'); if (open) closeDrawers(); $('top').classList.toggle('menuOpen', open); $('menuBtn').setAttribute('aria-expanded', open); return; }
     case 'mtab': {
       const id = el.dataset.v, open = !$(id).classList.contains('open');
       closeTopMenu();
@@ -3753,6 +3790,11 @@ function renderBHint() {
   if (el._h !== h) { el.innerHTML = h; el._h = h; }
   el.hidden = false;
 }
+function setHelpTab(v) {
+  $('helpPc').hidden = v !== 'pc'; $('helpPhone').hidden = v !== 'phone';
+  for (const [id, k] of [['htPc', 'pc'], ['htPhone', 'phone']]) { $(id).classList.toggle('on', v === k); $(id).setAttribute('aria-selected', v === k); }
+}
+setHelpTab(innerWidth <= 760 || matchMedia('(pointer: coarse)').matches ? 'phone' : 'pc');
 function placeTool(x, y, d) {
   const ex = inB(x, y) ? grid[idx(x, y)] : null;
   if (ex && ((tool === 'rail' && isRail(ex)) || (tool === 'pipe' && (ex.t === 'pipe' || ex.pipe)))) return true;
@@ -4030,7 +4072,7 @@ function save() { try { localStorage.setItem(SAVE_KEY, serialize()); return true
 function syncHelp() {
   const pend = !!(S && S.diffPending);
   $('diffPick').hidden = !pend; $('helpClose').hidden = pend;
-  $('ver').textContent = 'v' + VERSION + (S && S.diff && !pend ? ' · ' + DIFF[S.diff].n : '');
+  $('ver').textContent = 'v' + VERSION + (S && S.diff && !pend ? ' · ' + DIFF[S.diff].n : ''); $('verMenu').textContent = 'Höyrytehdas ' + $('ver').textContent;
 }
 function newGame() {
   S = { diff: 'normal', diffPending: true, mined: {}, seed: (Math.random() * 1e9) | 0, inv: { rautalevy: 80, tiili: 50, kuparilevy: 20, hiili: 30, putki: 30 }, level: 0, time: 0, won: false, sid: 0, region: 32, tut: 0, ghosts: [], felled: [] };
@@ -4272,7 +4314,8 @@ function loop(now) {
     $('steamTxt').textContent = `${Math.round(demand)} / ${Math.round(supply)}`;
     const pr = $('presTxt'); pr.textContent = supply > 0 || demand > 0 ? Math.round(sat * 100) + ' %' : '–';
     pr.style.color = sat < 0.999 && demand > 0 ? (sat < 0.5 ? 'var(--bad)' : 'var(--warn)') : 'var(--ok)';
-    const m = Math.floor(S.time / 60); $('clock').textContent = `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')} · ${dayLabel()}`;
+    if ($('top').classList.contains('steamOpen')) { $('steamTxt2').textContent = $('steamTxt').textContent; const p2 = $('presTxt2'); p2.textContent = pr.textContent; p2.style.color = pr.style.color; }
+    const m = Math.floor(S.time / 60); $('clock').textContent = $('clock2').textContent = `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')} · ${dayLabel()}`;
     renderInv(); renderGoal(); renderInfo(); renderTools(); renderAlerts();
     if ((achT = (achT || 0) + 1) % 4 === 0) checkAch();
     tutorialTick(); renderMapTip();
