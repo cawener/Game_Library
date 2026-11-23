@@ -625,7 +625,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.50.4';
+const VERSION = '0.50.5';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -3498,7 +3498,6 @@ function kh(t) {
 }
 const fillKeys = str => str.replace(/\{k:(\w+)\}/g, (_, t) => { const k = kh(t); return k ? ` (${k})` : ''; });
 function renderTools() {
-  if (tool && BUILD[tool]) { const c = CATS.find(c => c.tools.includes(tool)); if (c) curCat = c.id; }
   let h = '<div class="tabs" role="tablist">';
   for (const c of CATS) if (c.tools.some(unlocked)) h += `<button role="tab" class="${c.id === curCat ? 'on' : ''}" data-a="cat" data-v="${c.id}"><span class="tk">${c.key}</span>${c.n}</button>`;
   h += '</div><div class="row">';
@@ -3551,6 +3550,7 @@ function selectTool(k) {
   if (k && BUILD[k] && !unlocked(k)) return;
   if (k === 'paste' && !S.clip) return;
   tool = tool === k ? null : k; tp = null;
+  if (tool && BUILD[tool]) { const c = CATS.find(c => c.tools.includes(tool)); if (c) curCat = c.id; } // jump to the tool's tab only when it is picked
   cv.style.cursor = tool ? 'crosshair' : 'default';
   renderTools(); renderBHint();
 }
@@ -4543,7 +4543,7 @@ window.addEventListener('keydown', e => {
   else if ((k === 'v' || k === 'b') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); if (S.clip) { tool = null; selectTool('paste'); } }
   else if (!e.ctrlKey && !e.metaKey && !e.altKey && CATS.some(c => c.key.toLowerCase() === k)) {
     const c = CATS.find(c => c.key.toLowerCase() === k);
-    if (visTools(c).length) { curCat = c.id; if (tool && BUILD[tool] && !c.tools.includes(tool)) { tool = null; cv.style.cursor = 'default'; } renderTools(); }
+    if (visTools(c).length) { curCat = c.id; renderTools(); } // browsing another tab keeps the current tool
   }
   else if (/^[0-9]$/.test(k) && !e.ctrlKey && !e.metaKey) {
     const c = CATS.find(c => c.id === curCat) || CATS[0], list = visTools(c), n = k === '0' ? 9 : +k - 1;
