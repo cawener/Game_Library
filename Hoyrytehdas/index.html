@@ -492,6 +492,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <kbd>Rakentaminen</kbd><span>1) <b>Valitse paikka</b>: napauta karttaa. 2) <b>Valitse suunta</b>: napauta haluttua nuolta haamun ympärillä. Haamu tai ✓ rakentaa korostettuun suuntaan, ↻ kääntää ja ✕ peruu. Vetäminen liikuttaa näkymää rakennustilassakin</span>
       <kbd>Kuljettimet ja putket</kbd><span>Kuljettimet, putket, öljyputket ja raiteet rakennetaan vetämällä sormella. Suunta seuraa vetoa</span>
       <kbd>Pura</kbd><span>Valitse Pura-kortti ja napauta tai vedä rakennusten yli. Materiaalit palautuvat varastoon</span>
+      <kbd>Kopioi asetukset</kbd><span>Rakennuksen tiedoissa: Kopioi asetukset (resepti, suodatin, tila) ja avaa sitten samanlainen rakennus ja paina Liitä asetukset</span>
       <kbd>Pysäytä kone</kbd><span>Avaa kone ja paina Pysäytä. Kone ei silloin kuluta höyryä eikä raaka-aineita, ja sen päällä näkyy taukomerkki</span>
       <kbd>Pura alue</kbd><span>Pura-työkalun ohjeruudussa voit valita Viiva (sormen reitti) tai Alue (vedä suorakulmio, kaikki sen sisällä puretaan)</span>
       <kbd>Käännä</kbd><span>Kortti kääntää valittua rakennusta ennen rakentamista tai avattua rakennusta paikallaan</span>
@@ -637,7 +638,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.50.19';
+const VERSION = '0.50.20';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -4128,6 +4129,8 @@ function renderInfo() {
   }
   if (RATE_SHOW[b.t] && b._t0 != null) { const r = rateOfB(b), unit = b.t === 'drill' || b.t === 'drill2' ? 'malmia' : 'kpl'; h += `<div class="kv"><span>Todellinen tuotanto (viim. minuutti)</span><span><b>${r >= 10 ? Math.round(r) : r.toFixed(1).replace('.', ',')}</b> ${unit}/min</span></div>`; }
   if (UPGRADABLE[b.t]) h += upgradeHTML(b);
+  if (b.t && BUILD[b.t] && b.t !== 'train') { const has = Object.keys(cfgOfB(b)).length > 0, can = cfgClip && CFG_FAMILY(cfgClip.t) === CFG_FAMILY(b.t);
+    if (has || can) h += `<div class="acts">${has ? '<button class="sbtn" data-a="cfgCopy">Kopioi asetukset</button>' : ''}${can ? '<button class="sbtn" data-a="cfgPaste">Liitä asetukset</button>' : ''}</div>`; }
   if (OFFABLE(b.t)) h += `<div class="acts"><button class="sbtn${b.off ? ' on' : ''}" data-a="offTog">${b.off ? '&#9654; Käynnistä' : '&#10074;&#10074; Pysäytä'} (P)</button></div>`;
   if (b.t !== 'hq') h += `<div class="acts">${b.t === 'train' || b.t === 'rail' || b.t === 'pipe' || b.t === 'tunnel' ? '' : '<button class="sbtn" data-a="rot">Käännä (R)</button>'}<button class="sbtn" data-a="del">Pura</button></div>`;
   setHTML($('info'), fillKeys(h));
@@ -4181,6 +4184,8 @@ function doAction(el) {
     case 'slotSave': try { localStorage.setItem(slotKey(el.dataset.v), serialize()); localStorage.setItem(slotKey(el.dataset.v) + '-meta', JSON.stringify({ when: Date.now(), time: S.time, level: S.level, n: blist.length })); toast(`Tallennettu paikkaan ${el.dataset.v}`); } catch (err) { toast('Tallennus ei onnistunut: selaimen tallennustila voi olla täynnä'); } renderSlots(); return;
     case 'slotLoad': try { const str = localStorage.getItem(slotKey(el.dataset.v)); if (!str) return; restore(str); $('newg').hidden = true; closeInfo(); renderTools(); renderInv(); renderGoal(); save(); toast(`Ladattu paikasta ${el.dataset.v}`); } catch (err) { toast('Tallennusta ei voitu ladata'); } return;
     case 'rmMode': PREF.rmArea = el.dataset.v === '1'; savePrefs(); renderBHint(); return;
+    case 'cfgCopy': if (b) copyCfg(b); return;
+    case 'cfgPaste': if (b) pasteCfg(b); return;
     case 'offTog': if (b && OFFABLE(b.t)) { b.off = !b.off; sfx('place'); toast(`${BUILD[b.t].n}: ${b.off ? 'pysäytetty' : 'käynnissä'}`); } break;
     case 'toolClear': selectTool(tool); return;
     case 'marksTog': marksOpen = !marksOpen; renderMarks(); return;
@@ -4562,19 +4567,25 @@ function setOverlay(m) {
   el.hidden = false;
 }
 const CFG_FAMILY = t => (t === 'smelter2' ? 'smelter' : t === 'assembler2' ? 'assembler' : t);
+const cfgOfB = bb => { const c = {}; for (const k of ['rec', 'filt', 'mode', 'outOn', 'one', 'outs']) if (bb[k] != null) c[k] = bb[k]; return c; };
+function copyCfg(bb) {
+  const c = cfgOfB(bb);
+  if (!Object.keys(c).length) { toast(`${BUILD[bb.t].n}: ei kopioitavia asetuksia`); return; }
+  cfgClip = { t: bb.t, cfg: JSON.parse(JSON.stringify(c)) }; toast(`Asetukset kopioitu (${BUILD[bb.t].n}). ${lastPT === 'touch' ? 'Avaa samanlainen rakennus ja paina Liitä asetukset.' : 'Shift + klikkaus liittää ne samanlaiseen rakennukseen.'}`); sfx('craft');
+  if (selected === bb) renderInfo();
+}
+function pasteCfg(bb) {
+  if (!cfgClip) { toast('Kopioi ensin asetukset'); return; }
+  if (CFG_FAMILY(cfgClip.t) !== CFG_FAMILY(bb.t)) { toast(`Asetukset on kopioitu rakennuksesta ${BUILD[cfgClip.t].n.toLowerCase()}, eivät sovi tähän`); sfx('error'); return; }
+  applyCfg(bb, cfgClip.cfg); if (cfgClip.cfg.one != null) bb.one = cfgClip.cfg.one;
+  sparks(bb.x + .5, bb.y + .5, 6); sfx('place'); toast('Asetukset liitetty'); if (selected === bb) renderInfo();
+}
 function clickTile(t, mods) {
   if (!inB(t.x, t.y)) return;
   const bb = grid[idx(t.x, t.y)];
   if (bb && mods && (mods.ctrl || mods.shift) && bb.t !== 'hq') {
-    if (mods.ctrl) {
-      const c = {}; for (const k of ['rec', 'filt', 'mode', 'outOn', 'one', 'outs']) if (bb[k] != null) c[k] = bb[k];
-      if (!Object.keys(c).length) { toast(`${BUILD[bb.t].n}: ei kopioitavia asetuksia`); return; }
-      cfgClip = { t: bb.t, cfg: c }; toast(`Asetukset kopioitu (${BUILD[bb.t].n}). Shift + klikkaus liittää ne samanlaiseen rakennukseen.`); sfx('craft'); return;
-    }
-    if (!cfgClip) { toast('Kopioi ensin asetukset Ctrl + klikkauksella'); return; }
-    if (CFG_FAMILY(cfgClip.t) !== CFG_FAMILY(bb.t)) { toast(`Asetukset on kopioitu rakennuksesta ${BUILD[cfgClip.t].n.toLowerCase()}, eivät sovi tähän`); sfx('error'); return; }
-    applyCfg(bb, cfgClip.cfg); if (cfgClip.cfg.one != null) bb.one = cfgClip.cfg.one;
-    sparks(bb.x + .5, bb.y + .5, 6); sfx('place'); if (selected === bb) renderInfo(); return;
+    if (mods.ctrl) { copyCfg(bb); return; }
+    pasteCfg(bb); return;
   }
   const tr = trainAt(t.x, t.y); if (tr) { openInfo(tr); return; }
   const zp = zeps.find(z => Math.hypot(z.fx - (t.x + .5), z.fy - (z._alt || 0) * .6 - (t.y + .5)) < 1.1); if (zp) { openInfo(zp); return; }
