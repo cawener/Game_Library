@@ -629,7 +629,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.50.9';
+const VERSION = '0.50.10';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -2796,32 +2796,56 @@ function trailAt(tr, back) {
   }
   return null;
 }
+function trainCargo(tr) { let best = null, n = 0; for (const k in tr.inv || {}) if (tr.inv[k] > n) { n = tr.inv[k]; best = k; } return best; }
 function drawWagons(tr) {
-  const fill = tr.n / BUILD.train.cap;
+  const fill = tr.n / BUILD.train.cap, cargo = trainCargo(tr);
   for (let w = 0; w < 2; w++) {
     const a = trailAt(tr, .95 + w * 1.05), b2 = trailAt(tr, 1.35 + w * 1.05); if (!a || !b2) continue;
     const cx = (a[0] + b2[0]) / 2, cy = (a[1] + b2[1]) / 2, ang = Math.atan2(a[1] - b2[1], a[0] - b2[0]);
     g.save(); g.translate(cx, cy); g.rotate(ang);
-    g.fillStyle = 'rgba(0,0,0,.3)'; g.fillRect(-.42, -.22, .9, .5);
-    rr(-.45, -.27, .9, .54, .05); g.fillStyle = '#5a3a24'; g.fill(); g.lineWidth = .03; g.strokeStyle = P.soot; g.stroke();
-    g.fillStyle = '#3a2618'; g.fillRect(-.4, -.22, .8, .44);
-    const boxes = Math.round(Math.max(0, Math.min(1, fill * 2 - w)) * 4);
-    for (let k = 0; k < boxes; k++) { const bx = -.36 + (k % 2) * .38, by = -.18 + Math.floor(k / 2) * .19; g.fillStyle = k % 2 ? P.wood : '#9a6a3c'; g.fillRect(bx, by, .32, .16); g.strokeStyle = P.woodD; g.lineWidth = .015; g.strokeRect(bx, by, .32, .16); }
+    g.fillStyle = 'rgba(0,0,0,.32)'; g.fillRect(-.41, -.2, .9, .52);
+    g.fillStyle = '#1c1612'; for (const x of [-.3, .22]) for (const y of [-.3, .22]) g.fillRect(x, y, .14, .08); // wheels
+    rr(-.45, -.27, .9, .54, .05); g.fillStyle = metal('#6a4428', -.45, -.27, .45, .27); g.fill(); g.lineWidth = .03; g.strokeStyle = P.soot; g.stroke();
+    g.strokeStyle = 'rgba(30,18,8,.6)'; g.lineWidth = .015; g.beginPath(); for (const y of [-.12, .03, .18]) { g.moveTo(-.45, y); g.lineTo(.45, y); } g.stroke(); // planks
+    g.fillStyle = '#2e1f14'; g.fillRect(-.39, -.21, .78, .42);
+    g.fillStyle = P.ironD; for (const x of [-.45, .41]) g.fillRect(x, -.27, .04, .54); // iron end bands
+    const slots = Math.round(Math.max(0, Math.min(1, fill * 2 - w)) * 4);
+    for (let k = 0; k < slots; k++) { const bx = -.36 + (k % 2) * .38, by = -.19 + Math.floor(k / 2) * .2;
+      if (cargo && ISPR[cargo]) g.drawImage(ISPR[cargo], bx + .04, by - .02, .24, .24);
+      else { g.fillStyle = k % 2 ? P.wood : '#9a6a3c'; g.fillRect(bx, by, .32, .16); } }
     g.fillStyle = P.ironD; g.fillRect(.45, -.04, .08, .08);
     g.restore();
   }
 }
 function drawTrain(tr, t, alpha) {
   g.save(); g.translate(tr.rx ?? tr.fx, tr.ry ?? tr.fy); g.rotate(tr._ra ?? tr.ang); if (alpha < 1) g.globalAlpha = alpha;
-  g.fillStyle = 'rgba(0,0,0,.3)'; rr(-.56, -.26, 1.18, .58, .1); g.fill();
-  rr(-.58, -.3, 1.14, .6, .08); g.fillStyle = '#26352e'; g.fill(); g.lineWidth = .035; g.strokeStyle = P.soot; g.stroke();
-  rr(-.08, -.2, .58, .4, .18); g.fillStyle = '#1a2520'; g.fill();
-  g.strokeStyle = P.brass; g.lineWidth = .04; g.beginPath(); for (const x of [.08, .26]) { g.moveTo(x, -.2); g.lineTo(x, .2); } g.stroke();
-  rr(-.58, -.3, .44, .6, .05); g.fillStyle = '#6a2a22'; g.fill(); g.strokeStyle = P.soot; g.lineWidth = .03; g.stroke();
-  g.fillStyle = P.brassL; g.fillRect(-.5, -.24, .12, .1); g.fillRect(-.5, .14, .12, .1);
-  const f = tr.n / BUILD.train.cap; g.fillStyle = P.soot; g.fillRect(-.33, -.17, .1, .34); g.fillStyle = P.brass; g.fillRect(-.33, .17 - .34 * f, .1, .34 * f);
-  circle(.4, 0, .1); g.fillStyle = P.brass; g.fill(); circle(.4, 0, .065); g.fillStyle = P.soot; g.fill();
-  g.beginPath(); g.moveTo(.56, -.24); g.lineTo(.7, 0); g.lineTo(.56, .24); g.closePath(); g.fillStyle = P.brassD; g.fill();
+  const moving = tr.st === 'move', ph = moving ? t * 9 : 0;
+  g.fillStyle = 'rgba(0,0,0,.32)'; rr(-.54, -.24, 1.18, .6, .1); g.fill();
+  // running gear: wheels and side rods along both flanks
+  for (const sy of [-1, 1]) {
+    g.fillStyle = '#17120e'; for (const x of [-.36, -.08, .2]) { g.fillRect(x, sy * .31 - .045, .18, .09); }
+    const ox = Math.cos(ph) * .05; g.fillStyle = P.brass; g.fillRect(-.32 + ox, sy * .31 - .015, .52, .03);
+  }
+  rr(-.58, -.3, 1.14, .6, .08); g.fillStyle = '#1f2b25'; g.fill(); g.lineWidth = .035; g.strokeStyle = P.soot; g.stroke();
+  // boiler barrel with a cylindrical highlight
+  const bg = g.createLinearGradient(0, -.21, 0, .21); bg.addColorStop(0, '#1a2520'); bg.addColorStop(.3, '#4a6a5a'); bg.addColorStop(.55, '#2c4038'); bg.addColorStop(1, '#141c18');
+  rr(-.1, -.21, .62, .42, .2); g.fillStyle = bg; g.fill(); g.lineWidth = .02; g.strokeStyle = 'rgba(0,0,0,.5)'; g.stroke();
+  g.strokeStyle = P.brass; g.lineWidth = .035; g.beginPath(); for (const x of [.04, .22, .4]) { g.moveTo(x, -.205); g.lineTo(x, .205); } g.stroke(); // brass bands
+  circle(.13, 0, .08); g.fillStyle = metal(P.brass, .05, -.08, .21, .08); g.fill(); g.lineWidth = .015; g.strokeStyle = P.brassD; g.stroke(); // steam dome
+  // cab with roof
+  rr(-.58, -.3, .46, .6, .05); g.fillStyle = metal('#7a3026', -.58, -.3, -.12, .3); g.fill(); g.strokeStyle = P.soot; g.lineWidth = .03; g.stroke();
+  rr(-.54, -.25, .38, .5, .04); g.fillStyle = '#4a1c16'; g.fill();
+  g.fillStyle = '#f2d78a'; g.globalAlpha = (alpha < 1 ? alpha : 1) * (.55 + .45 * nightness); g.fillRect(-.5, -.27, .12, .06); g.fillRect(-.5, .21, .12, .06); g.globalAlpha = alpha < 1 ? alpha : 1;
+  const f = tr.n / BUILD.train.cap; g.fillStyle = P.soot; g.fillRect(-.31, -.15, .08, .3); g.fillStyle = P.brass; g.fillRect(-.31, .15 - .3 * f, .08, .3 * f); // cargo gauge
+  // chimney with ember glow
+  circle(.42, 0, .1); g.fillStyle = P.ironD; g.fill(); g.lineWidth = .02; g.strokeStyle = P.ironL; g.stroke(); circle(.42, 0, .06); g.fillStyle = moving ? '#3a160a' : P.soot; g.fill();
+  if (moving) { circle(.42, 0, .035); g.fillStyle = `rgba(255,140,50,${.35 + .2 * Math.sin(t * 12)})`; g.fill(); }
+  // cowcatcher + headlamp
+  g.beginPath(); g.moveTo(.56, -.24); g.lineTo(.72, 0); g.lineTo(.56, .24); g.closePath(); g.fillStyle = P.brassD; g.fill();
+  g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = .012; g.beginPath(); for (const y of [-.12, 0, .12]) { g.moveTo(.57, y); g.lineTo(.68, y * .3); } g.stroke();
+  circle(.55, 0, .045); g.fillStyle = '#fff2c0'; g.fill();
+  if (nightness > .1 && !iconMode) { const lg = g.createRadialGradient(.6, 0, 0, .6, 0, 1.2); lg.addColorStop(0, `rgba(255,236,170,${.35 * nightness})`); lg.addColorStop(1, 'rgba(255,236,170,0)');
+    g.fillStyle = lg; g.beginPath(); g.moveTo(.58, -.04); g.lineTo(1.8, -.55); g.lineTo(1.8, .55); g.lineTo(.58, .04); g.closePath(); g.fill(); }
   g.restore();
 }
 function boilerDraw(b, t, big, oil) {
