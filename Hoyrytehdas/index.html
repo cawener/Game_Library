@@ -305,8 +305,8 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 #steamPop div { display: flex; justify-content: space-between; gap: 14px; }
 #steamPop .lbl { opacity: .75; }
 #menuBtn, #mtabs, #tutP { display: none; }
-@media (max-width: 760px) {
-  /* phone: compact one-row top bar, menu buttons in a drop-down, side panels as pull-down drawers behind tabs */
+@media (max-width: 760px), (max-height: 500px) {
+  /* phone (narrow or short screens, e.g. phones in landscape): compact one-row top bar, menu buttons in a drop-down, side panels as pull-down drawers behind tabs */
   #top { gap: 8px; flex-wrap: nowrap; padding-top: calc(env(safe-area-inset-top, 0px) + 4px); padding-bottom: 4px; }
   #logo, .ver, .steam, #clock { display: none; }
   #gauge { cursor: pointer; }
@@ -332,7 +332,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
   #mtabs button.on { color: var(--brass-light); border-color: var(--brass); background: linear-gradient(#4a3822, #2e2216); }
   #tutP { display: block; }
   #tutP .tut { margin: 0; }
-  #invP, #goalP, #mini, #tutP { left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); width: auto; top: calc(var(--topH, 52px) + 40px); max-height: calc(100% - var(--topH, 52px) - 210px); font-size: 14px;
+  #invP, #goalP, #mini, #tutP { left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); width: auto; top: calc(var(--topH, 52px) + 40px); max-height: calc(100% - var(--topH, 52px) - var(--toolsB, 160px) - 50px); font-size: 14px;
     opacity: 0; transform: translateY(-12px); pointer-events: none; transition: opacity .18s, transform .18s; z-index: 8; }
   #invP.open, #goalP.open, #mini.open, #tutP.open { opacity: 1; transform: none; pointer-events: auto; }
   #mini { width: min(80vw, calc(100vh - var(--topH, 52px) - 230px)); right: auto; }
@@ -348,6 +348,27 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
   .tool { width: 56px; height: 66px; padding-top: 13px; font-size: 9.5px; }
   .tool img { width: 28px; height: 28px; }
   .tool .big-ch { font-size: 24px; line-height: 28px; height: 28px; }
+}
+@media (max-width: 380px) {
+  #mtabs { right: max(8px, env(safe-area-inset-right, 0px)); overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
+  #mtabs button { white-space: nowrap; flex-shrink: 0; padding: 5px 9px 6px; font-size: 10px; }
+}
+@media (max-height: 500px) and (orientation: landscape) {
+  /* phone held sideways: slimmer toolbar, drawers and info sheet as side cards instead of full width */
+  .tool { width: 50px; height: 50px; padding-top: 6px; font-size: 8.5px; }
+  .tool img { width: 22px; height: 22px; }
+  .tool .big-ch { font-size: 19px; line-height: 22px; height: 22px; }
+  .tool .k { font-size: 8px; }
+  #tools .tabs button { padding: 2px 7px 3px; }
+  #invP, #goalP, #tutP { right: auto; width: min(420px, 46vw); }
+  #mini { width: min(40vw, calc(100vh - var(--topH, 52px) - var(--toolsB, 120px) - 50px)); }
+  #info { width: min(420px, 46vw); left: auto; right: max(10px, env(safe-area-inset-right, 0px)); }
+  #bhint { bottom: calc(var(--toolsB, 110px) + 4px); }
+}
+@media (horizontal-viewport-segments: 2) {
+  /* dual-screen / foldable spanning: keep the toolbar on the right screen, clear of the hinge */
+  #tools { left: calc(env(viewport-segment-left 1 0) + env(viewport-segment-width 1 0) / 2); max-width: calc(env(viewport-segment-width 1 0) - 16px); }
+  #goalP { right: max(10px, env(safe-area-inset-right, 0px)); }
 }
 @media (prefers-reduced-motion: reduce) { #toast div { animation-duration: .01s; animation-fill-mode: forwards; opacity: 1; } }
 </style>
@@ -578,7 +599,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.33';
+const VERSION = '0.34';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -1882,10 +1903,12 @@ function updateTrains(dt) {
 const cv = document.getElementById('cv');
 let ctx = cv.getContext('2d'), g = ctx;
 let dpr = 1, CW = 0, CH = 0, QUAL_CAP = 2;
+const COMPACT = matchMedia('(max-width: 760px), (max-height: 500px)'), isCompact = () => COMPACT.matches;
+function updToolsB() { const tl = document.getElementById('tools'); if (tl) document.documentElement.style.setProperty('--toolsB', (innerHeight - tl.getBoundingClientRect().top + 8) + 'px'); }
 const QUALS = { high: 2, mid: 1.5, low: 1 };
 function resize() {
   const tb = document.getElementById('top'); if (tb) document.documentElement.style.setProperty('--topH', tb.offsetHeight + 'px');
-  const tl = document.getElementById('tools'); if (tl) document.documentElement.style.setProperty('--toolsB', (innerHeight - tl.getBoundingClientRect().top + 8) + 'px');
+  updToolsB();
   dpr = Math.min(QUAL_CAP, window.devicePixelRatio || 1);
   CW = cv.clientWidth; CH = cv.clientHeight;
   cv.width = Math.round(CW * dpr); cv.height = Math.round(CH * dpr);
@@ -3232,7 +3255,7 @@ function showTip(el, html) {
   const tip = $('tip'); tip.innerHTML = html; tip.hidden = false;
   const r = el.getBoundingClientRect(), tr = tip.getBoundingClientRect();
   const side = el.closest('#invP') ? 'right' : el.closest('#goalP, #info') ? 'left' : null;
-  if (side && innerWidth > 760) {
+  if (side && !isCompact()) {
     const pr = el.closest('.panel').getBoundingClientRect();
     tip.style.left = (side === 'right' ? pr.right + 8 : pr.left - tr.width - 8) + 'px';
     tip.style.top = Math.max(8, Math.min(innerHeight - tr.height - 8, r.top + r.height / 2 - tr.height / 2)) + 'px';
@@ -3360,7 +3383,7 @@ function renderGoal() {
     h += `<div class="cmode" role="group" aria-label="Toimitusten jako">${[['half', 'Puolet'], ['all', 'Kaikki'], ['off', 'Tauolla']].map(([v, l]) => `<button class="sbtn${md === v ? ' on' : ''}" data-a="cmode" data-v="${v}">${l}</button>`).join('')}</div>`;
     h += `<div class="rate">${md === 'half' ? `Joka toinen ${ITEMS[c.i].n.toLowerCase()} menee tilaukselle, loput varastoon.` : md === 'all' ? `Kaikki toimitettu ${ITEMS[c.i].n.toLowerCase()} menee tilaukselle, eikä varasto kasva.` : 'Tilaus ei ota toimituksia. Aika kuluu silti.'}</div></div>`;
   }
-  const tutOn = S.tut != null && S.tut < TUT.length, phone = innerWidth <= 760;
+  const tutOn = S.tut != null && S.tut < TUT.length, phone = isCompact();
   const tutH = tutOn ? `<div class="tut"><div class="pat-no">Opastus ${S.tut + 1} / ${TUT.length}</div><p>${fillKeys(TUT[S.tut].t)}</p><button class="sbtn" data-a="tutSkip">Ohita opastus</button></div>` : '';
   // on phones the tutorial has its own tab and drawer while it is active
   const tab = $('tutTab'); tab.hidden = !tutOn; tab.textContent = tutOn ? `Opastus ${S.tut + 1}/${TUT.length}` : 'Opastus';
@@ -3410,8 +3433,8 @@ function buyPatent() {
 
 // ---- info panel for selected building
 function openInfo(b) {
-  { const tl = $('tools'); if (tl) document.documentElement.style.setProperty('--toolsB', (innerHeight - tl.getBoundingClientRect().top + 8) + 'px'); } selected = b; $('info').hidden = false; $('info')._h = null; renderInfo();
-  if (innerWidth <= 760 && b && b.x != null) { // keep the building visible above the info sheet on phones
+  updToolsB(); selected = b; $('info').hidden = false; $('info')._h = null; renderInfo();
+  if (isCompact() && b && b.x != null) { // keep the building visible above the info sheet on phones
     const top = $('info').getBoundingClientRect().top, cy = (b.fy != null ? b.fy : b.y + (b.h || 1) / 2), sy = (cy - cam.y) * cam.z + CH / 2;
     const tH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--topH')) || 52;
     if (sy > top - 30 || sy < tH + 40) cam.y = cy - ((tH + 40 + top) / 2 - CH / 2) / cam.z;
@@ -3586,7 +3609,7 @@ function doAction(el) {
     case 'helpTab': setHelpTab(el.dataset.v); return;
     case 'closeHelp': $('help').hidden = true; paused = false; return;
     case 'pickDiff': S.diff = el.dataset.v; delete S.diffPending; $('help').hidden = true; syncHelp(); renderGoal();
-      if (innerWidth <= 760 && S.tut === 0) { $('tutP').classList.add('open'); $('tutTab').classList.add('on'); } toast(`Vaikeustaso: ${DIFF[S.diff].n}. ${DIFF[S.diff].d}`); save(); return;
+      if (isCompact() && S.tut === 0) { $('tutP').classList.add('open'); $('tutTab').classList.add('on'); } toast(`Vaikeustaso: ${DIFF[S.diff].n}. ${DIFF[S.diff].d}`); save(); return;
     case 'closeWin': $('win').hidden = true; return;
     case 'newYes': $('newg').hidden = true; newGame(); $('help').hidden = false; return;
     case 'newNo': $('newg').hidden = true; return;
@@ -3628,10 +3651,11 @@ function doAction(el) {
       b.sched = sc.length === all.length ? null : sc;
     } break;
     case 'stats': toggleStats(); closeTopMenu(); return;
-    case 'gaugeTap': { if (innerWidth > 760) return; const open = !$('top').classList.contains('steamOpen'); closeTopMenu(); closeDrawers(); $('top').classList.toggle('steamOpen', open); return; }
+    case 'gaugeTap': { if (!isCompact()) return; const open = !$('top').classList.contains('steamOpen'); closeTopMenu(); closeDrawers(); $('top').classList.toggle('steamOpen', open); return; }
     case 'topMenu': { $('top').classList.remove('steamOpen'); const open = !$('top').classList.contains('menuOpen'); if (open) closeDrawers(); $('top').classList.toggle('menuOpen', open); $('menuBtn').setAttribute('aria-expanded', open); return; }
     case 'mtab': {
       const id = el.dataset.v, open = !$(id).classList.contains('open');
+      updToolsB();
       closeTopMenu();
       for (const b2 of document.querySelectorAll('#mtabs button')) { const on = b2.dataset.v === id && open; b2.classList.toggle('on', on); $(b2.dataset.v).classList.toggle('open', on); }
       if (id === 'mini' && open) { miniBase = null; requestAnimationFrame(drawMini); }
@@ -3936,7 +3960,7 @@ function setHelpTab(v) {
   $('helpPc').hidden = v !== 'pc'; $('helpPhone').hidden = v !== 'phone';
   for (const [id, k] of [['htPc', 'pc'], ['htPhone', 'phone']]) { $(id).classList.toggle('on', v === k); $(id).setAttribute('aria-selected', v === k); }
 }
-setHelpTab(innerWidth <= 760 || matchMedia('(pointer: coarse)').matches ? 'phone' : 'pc');
+setHelpTab(isCompact() || matchMedia('(pointer: coarse)').matches ? 'phone' : 'pc');
 function placeTool(x, y, d) {
   const ex = inB(x, y) ? grid[idx(x, y)] : null;
   if (ex && ((tool === 'rail' && isRail(ex)) || (tool === 'pipe' && (ex.t === 'pipe' || ex.pipe)))) return true;
@@ -4009,7 +4033,7 @@ function clickTile(t, mods) {
 
 cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('pointerdown', e => {
-  commitGrp(); closeTopMenu(); if (innerWidth <= 760) closeDrawers();
+  commitGrp(); closeTopMenu(); if (isCompact()) closeDrawers();
   cv.setPointerCapture(e.pointerId);
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   $('tip').hidden = true;
