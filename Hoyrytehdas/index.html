@@ -220,6 +220,9 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 #pins button { display: grid; grid-template-columns: 20px auto auto; gap: 6px; align-items: center; padding: 4px 9px; background: rgba(20,15,11,.9); border: 1px solid var(--brass-dark); border-radius: 4px; color: var(--parchment); font-size: 13px; font-variant-numeric: tabular-nums; cursor: pointer; text-align: left; }
 #pins button .ic { width: 18px; height: 18px; }
 #pins .r { color: var(--ok); } #pins .r.z { color: var(--muted); } #pins .c { color: var(--muted); }
+.recent { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; flex-shrink: 0; align-content: center; }
+.recent button { width: 30px; height: 30px; padding: 1px; background: #2a2018; border: 1px solid var(--brass-dark); border-radius: 4px; cursor: pointer; }
+.recent button:hover { border-color: var(--brass-light); } .recent img { width: 24px; height: 24px; display: block; margin: 0 auto; }
 .curTool { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; }
 .curTool button { display: inline-flex; align-items: center; gap: 5px; background: #3a2c1c; border: 1px solid var(--brass); color: var(--brass-light); font-size: 11px; padding: 2px 7px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
 .curTool img { width: 16px; height: 16px; } .curTool .ctX { padding: 2px 6px; }
@@ -494,7 +497,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <kbd>Nipistä kahdella sormella</kbd><span>Zoomaa lähemmäs tai kauemmas</span>
       <kbd>Pidä sormea painettuna</kbd><span>Näyttää kohteen tiedot: malmia jäljellä, rakennuksen tila, veden syvyys</span>
       <kbd>Napauta</kbd><span>Tyhjällä kädellä: louhi malmia käsin, kaada puu tai avaa rakennuksen tiedot</span>
-      <kbd>Alapalkki</kbd><span>Ylärivin välilehdet vaihtavat luokkaa (Logistiikka, Tuotanto, Energia ja öljy, Liikenne, Telakka). Napauta korttia valitaksesi rakennuksen ja uudelleen poistaaksesi valinnan. Palkkia voi vierittää sivuttain</span>
+      <kbd>Alapalkki</kbd><span>Luokkarivin oikeassa reunassa ovat viimeksi käytetyt rakennukset muista luokista: napauta vaihtaaksesi suoraan. Ylärivin välilehdet vaihtavat luokkaa (Logistiikka, Tuotanto, Energia ja öljy, Liikenne, Telakka). Napauta korttia valitaksesi rakennuksen ja uudelleen poistaaksesi valinnan. Palkkia voi vierittää sivuttain</span>
       <kbd>Rakentaminen</kbd><span>1) <b>Valitse paikka</b>: napauta karttaa. 2) <b>Valitse suunta</b>: napauta haluttua nuolta haamun ympärillä. Haamu tai ✓ rakentaa korostettuun suuntaan, ↻ kääntää ja ✕ peruu. Vetäminen liikuttaa näkymää rakennustilassakin</span>
       <kbd>Kuljettimet ja putket</kbd><span>Kuljettimet, putket, öljyputket ja raiteet rakennetaan vetämällä sormella. Suunta seuraa vetoa</span>
       <kbd>Pura</kbd><span>Valitse Pura-kortti ja napauta tai vedä rakennusten yli. Materiaalit palautuvat varastoon</span>
@@ -644,7 +647,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.50.21';
+const VERSION = '0.50.22';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -3736,6 +3739,8 @@ function renderTools() {
     if (tc && tc.id !== curCat) h += `<span class="curTool"><button class="ctGo" data-a="cat" data-v="${tc.id}" title="Näytä valitun työkalun luokka"><img src="${TURL[tool]}" alt="">${BUILD[tool].n}</button><button class="ctX" data-a="toolClear" aria-label="Poista valinta">&#10005;</button></span>`; }
   h += '</div><div class="row">';
   const cat = CATS.find(c => c.id === curCat) || CATS[0];
+  { const rec = (PREF.recent || []).filter(k => k !== tool && BUILD[k] && unlocked(k) && TURL[k] && !cat.tools.includes(k)).slice(0, 4);
+    if (rec.length) h += `<span class="recent" aria-label="Viimeksi käytetyt">${rec.map(k => `<button data-tool="${k}" title="${BUILD[k].n} (viimeksi käytetty)" aria-label="${BUILD[k].n}"><img src="${TURL[k]}" alt=""></button>`).join('')}</span><span class="sep"></span>`; }
   visTools(cat).forEach((k, i) => {
     h += `<button class="tool${tool === k ? ' on' : ''}${affordable(BUILD[k].cost) ? '' : ' poor'}" data-tool="${k}" aria-label="${BUILD[k].n}"><span class="k">${i === 9 ? 0 : i + 1}</span><img src="${TURL[k]}" alt=""><span class="nm">${BUILD[k].n}</span></button>`;
   });
@@ -3784,7 +3789,8 @@ function selectTool(k) {
   if (k && BUILD[k] && !unlocked(k)) return;
   if (k === 'paste' && !S.clip) return;
   tool = tool === k ? null : k; tp = null;
-  if (tool && BUILD[tool]) { const c = CATS.find(c => c.tools.includes(tool)); if (c) curCat = c.id; } // jump to the tool's tab only when it is picked
+  if (tool && BUILD[tool]) { const c = CATS.find(c => c.tools.includes(tool)); if (c) curCat = c.id; // jump to the tool's tab only when it is picked
+    PREF.recent = [tool, ...(PREF.recent || []).filter(x => x !== tool)].slice(0, 8); savePrefs(); }
   cv.style.cursor = tool ? 'crosshair' : 'default';
   renderTools(); renderBHint();
 }
