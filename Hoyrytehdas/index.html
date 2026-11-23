@@ -637,7 +637,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.50.18';
+const VERSION = '0.50.19';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -1013,10 +1013,20 @@ function chunkAt(cx, cy, px = CPX) {
       const nx = tx + DX[d], ny = ty + DY[d]; if (!inB(nx, ny)) continue;
       const j = idx(nx, ny), nwet = terrain[j] === 1;
       if (wet && nwet && (depth[j] || 5) !== (depth[i] || 5)) band(xx, yy, d, .5, hexA(WATER_COL[depth[j] || 5], .5));
-      else if (wet && !nwet) { band(xx, yy, d, .3, 'rgba(205,232,226,.32)'); band(xx, yy, d, .07, 'rgba(240,248,244,.5)'); }
+      else if (wet && !nwet) {
+        // skip the ends of this edge where the land tile's corner gets rounded into water
+        let a0 = 0, a1 = 1; const ax = d % 2 === 0; // edge runs along x when d is north/south
+        for (const pp of [(d + 1) % 4, (d + 3) % 4]) { const lx = nx + DX[pp], ly = ny + DY[pp], wx = tx + DX[pp], wy = ty + DY[pp];
+          if (inB(lx, ly) && inB(wx, wy) && terrain[idx(lx, ly)] === 1 && terrain[idx(wx, wy)] === 1) { if ((ax ? DX[pp] : DY[pp]) > 0) a1 = .55; else a0 = .45; } }
+        x.save(); x.beginPath(); if (ax) x.rect(xx + a0, yy, a1 - a0, 1); else x.rect(xx, yy + a0, 1, a1 - a0); x.clip();
+        band(xx, yy, d, .3, 'rgba(205,232,226,.32)'); band(xx, yy, d, .07, 'rgba(240,248,244,.5)'); x.restore(); }
       else if (!wet && nwet) { band(xx, yy, d, .24, 'rgba(176,154,104,.55)'); band(xx, yy, d, .06, 'rgba(120,100,64,.6)'); }
     }
-    // rounded shore corners: where two perpendicular neighbours (and the diagonal) are of the other kind
+  }
+  // rounded shore corners (second pass so straight shore bands drawn later can't cover them)
+  for (let yy = 0; yy < CHK; yy++) for (let xx = 0; xx < CHK; xx++) {
+    const tx = cx * CHK + xx, ty = cy * CHK + yy; if (!inB(tx, ty)) continue;
+    const i = idx(tx, ty), wet = terrain[i] === 1;
     for (let d = 0; d < 4; d++) {
       const e = (d + 1) % 4, sx = DX[d] + DX[e], sy = DY[d] + DY[e];
       const ax = tx + DX[d], ay = ty + DY[d], bx = tx + DX[e], by = ty + DY[e], qx = tx + sx, qy = ty + sy;
