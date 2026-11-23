@@ -492,6 +492,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <kbd>Rakentaminen</kbd><span>1) <b>Valitse paikka</b>: napauta karttaa. 2) <b>Valitse suunta</b>: napauta haluttua nuolta haamun ympärillä. Haamu tai ✓ rakentaa korostettuun suuntaan, ↻ kääntää ja ✕ peruu. Vetäminen liikuttaa näkymää rakennustilassakin</span>
       <kbd>Kuljettimet ja putket</kbd><span>Kuljettimet, putket, öljyputket ja raiteet rakennetaan vetämällä sormella. Suunta seuraa vetoa</span>
       <kbd>Pura</kbd><span>Valitse Pura-kortti ja napauta tai vedä rakennusten yli. Materiaalit palautuvat varastoon</span>
+      <kbd>Pysäytä kone</kbd><span>Avaa kone ja paina Pysäytä. Kone ei silloin kuluta höyryä eikä raaka-aineita, ja sen päällä näkyy taukomerkki</span>
       <kbd>Pura alue</kbd><span>Pura-työkalun ohjeruudussa voit valita Viiva (sormen reitti) tai Alue (vedä suorakulmio, kaikki sen sisällä puretaan)</span>
       <kbd>Käännä</kbd><span>Kortti kääntää valittua rakennusta ennen rakentamista tai avattua rakennusta paikallaan</span>
       <kbd>Kopioi ja Kaavat</kbd><span>Kopioi-kortilla vedä suorakulmio alueen yli. Kaavat-kortista tallennat kaavan nimellä ja liität sen uudelleen napauttamalla karttaa</span>
@@ -520,6 +521,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <kbd>Oikea hiiri</kbd><span>Pura rakennus (materiaalit palautuvat)</span>
       <kbd>R</kbd><span>Käännä (Shift+R vastapäivään)</span>
       <kbd>Q</kbd><span>Pipetti: osoita rakennusta ja paina Q valitaksesi saman rakennuksen ja suunnan. Uudelleen painettuna tyhjentää valinnan</span>
+      <kbd>P</kbd><span>Pysäytä tai käynnistä osoitettu tai avattu kone. Pysäytetty kone ei kuluta höyryä eikä raaka-aineita</span>
       <kbd>Esc</kbd><span>Tyhjennä valinta</span>
       <kbd>Ctrl + Z</kbd><span>Kumoa viimeisin rakentaminen tai purku</span>
       <kbd>Osoita</kbd><span>Tyhjällä kädellä hiiren alla olevan kohteen tiedot näkyvät leijuvassa ruudussa</span>
@@ -635,7 +637,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.50.17';
+const VERSION = '0.50.18';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -833,7 +835,7 @@ const STATUS = {
   idle: ['Odottaa raaka-aineita', 'warn'], blocked: ['Ulostulo tukossa', 'warn'], norecipe: ['Valitse resepti', 'warn'],
   burn: ['Polttaa', 'ok'], notrees: ['Ei puita lähellä', 'warn'], nofuel: ['Ei polttoainetta', 'bad'], standby: ['Valmiustilassa', 'ok'],
   nonet: ['Ei yhteyttä kattilaan', 'bad'], move: ['Matkalla', 'ok'], load: ['Lastaa', 'ok'], unload: ['Purkaa', 'ok'],
-  depleted: ['Esiintymä ehtyi – rakenna uuteen paikkaan', 'bad'],
+  depleted: ['Esiintymä ehtyi – rakenna uuteen paikkaan', 'bad'], off: ['Pysäytetty', 'warn'],
   nopath: ['Ei reittiä seuraavalle asemalle', 'bad'], nostation: ['Ei asemia aikataulussa', 'warn'],
   nooil: ['Ei raakaöljyä', 'bad'], oilfull: ['Öljyputkisto täynnä', 'warn'], fly: ['Lentää', 'ok'], nomast: ['Tarvitaan vähintään kaksi mastoa', 'warn'],
 };
@@ -1448,6 +1450,7 @@ const mulOf = b => UP_SPEED[upl(b)] * (BUILD[b.t].mul || 1) * resMul('craft');
 const UP_SPEED = [1, 1, 1.5, 2.1], UP_STEAM = [1, 1, 1.35, 1.8];
 const UP_COST = [null, null, { kellokoneisto: 2, messinki: 6 }, { kellokoneisto: 4, venttiili: 4, teras: 6, voiteluoljy: 3 }];
 const upl = b => b.up || 1;
+const OFFABLE = t => !!(BUILD[t] && (BUILD[t].use || ['inserter', 'longins', 'lumber', 'saw', 'pumpjack', 'refinery', 'splitter', 'smartsplit'].includes(t)));
 function steam(b) { const n = netOf(b); if (!n || !n.boilers) return -1; n.demand += BUILD[b.t].use * UP_STEAM[upl(b)]; return n.sat; }
 function upgrade(b) {
   const nx = upl(b) + 1; if (nx > 3 || S.level < 3) return;
@@ -1740,7 +1743,7 @@ function tick(dt) {
     const av = n.supply + n.boost;
     n.sat = n.last <= 0 ? (av > 0 ? 1 : 0) : Math.min(1, av / n.last);
   }
-  for (const b of blist) { const u = UPD[b.t]; if (u) u(b, dt); }
+  for (const b of blist) { const u = UPD[b.t]; if (!u) continue; if (b.off) { b.st = 'off'; b.act = 0; continue; } u(b, dt); }
   let ts = 0, td = 0, worst = 1;
   for (const n of nets) {
     n.last = n.demand; n.flow = 0;
@@ -3475,7 +3478,7 @@ function render(fdt) {
   if (z >= 14 && !overlay) {
     const pulse = .7 + .3 * Math.sin(t * 5);
     for (const b of blist) {
-      const st = b.st, bad = BAD[st] && !(b.t === 'refinery' && st === 'nooil' && !onet(b)), warn = st === 'norecipe';
+      const st = b.st, bad = BAD[st] && !(b.t === 'refinery' && st === 'nooil' && !onet(b)), warn = st === 'norecipe' || st === 'off';
       if (!(bad || warn) || !vis(b)) continue;
       const w = b.w || 1, cx = b.x + w - .12, cy = b.y + .12, r = .2;
       g.globalAlpha = pulse;
@@ -3490,6 +3493,7 @@ function render(fdt) {
         g.fillStyle = '#ffd27a'; g.beginPath(); g.moveTo(cx, cy - .03); g.quadraticCurveTo(cx + .05, cy + .05, cx, cy + .09); g.quadraticCurveTo(cx - .05, cy + .05, cx, cy - .03); g.fill();
       } else if (st === 'nooil') { // drop
         g.fillStyle = '#9a7ad0'; g.beginPath(); g.moveTo(cx, cy - .12); g.quadraticCurveTo(cx + .1, cy + .02, cx, cy + .1); g.quadraticCurveTo(cx - .1, cy + .02, cx, cy - .12); g.fill();
+      } else if (st === 'off') { g.fillStyle = '#f0d070'; g.fillRect(cx - .07, cy - .08, .045, .16); g.fillRect(cx + .025, cy - .08, .045, .16);
       } else { g.textAlign = 'center'; g.textBaseline = 'middle'; uText(warn ? '?' : '!', cx, cy + .01, .26, '700 {} Cinzel, Georgia, serif'); }
       g.globalAlpha = 1;
     }
@@ -4114,6 +4118,7 @@ function renderInfo() {
   }
   if (RATE_SHOW[b.t] && b._t0 != null) { const r = rateOfB(b), unit = b.t === 'drill' || b.t === 'drill2' ? 'malmia' : 'kpl'; h += `<div class="kv"><span>Todellinen tuotanto (viim. minuutti)</span><span><b>${r >= 10 ? Math.round(r) : r.toFixed(1).replace('.', ',')}</b> ${unit}/min</span></div>`; }
   if (UPGRADABLE[b.t]) h += upgradeHTML(b);
+  if (OFFABLE(b.t)) h += `<div class="acts"><button class="sbtn${b.off ? ' on' : ''}" data-a="offTog">${b.off ? '&#9654; Käynnistä' : '&#10074;&#10074; Pysäytä'} (P)</button></div>`;
   if (b.t !== 'hq') h += `<div class="acts">${b.t === 'train' || b.t === 'rail' || b.t === 'pipe' || b.t === 'tunnel' ? '' : '<button class="sbtn" data-a="rot">Käännä (R)</button>'}<button class="sbtn" data-a="del">Pura</button></div>`;
   setHTML($('info'), fillKeys(h));
 }
@@ -4166,6 +4171,7 @@ function doAction(el) {
     case 'slotSave': try { localStorage.setItem(slotKey(el.dataset.v), serialize()); localStorage.setItem(slotKey(el.dataset.v) + '-meta', JSON.stringify({ when: Date.now(), time: S.time, level: S.level, n: blist.length })); toast(`Tallennettu paikkaan ${el.dataset.v}`); } catch (err) { toast('Tallennus ei onnistunut: selaimen tallennustila voi olla täynnä'); } renderSlots(); return;
     case 'slotLoad': try { const str = localStorage.getItem(slotKey(el.dataset.v)); if (!str) return; restore(str); $('newg').hidden = true; closeInfo(); renderTools(); renderInv(); renderGoal(); save(); toast(`Ladattu paikasta ${el.dataset.v}`); } catch (err) { toast('Tallennusta ei voitu ladata'); } return;
     case 'rmMode': PREF.rmArea = el.dataset.v === '1'; savePrefs(); renderBHint(); return;
+    case 'offTog': if (b && OFFABLE(b.t)) { b.off = !b.off; sfx('place'); toast(`${BUILD[b.t].n}: ${b.off ? 'pysäytetty' : 'käynnissä'}`); } break;
     case 'toolClear': selectTool(tool); return;
     case 'marksTog': marksOpen = !marksOpen; renderMarks(); return;
     case 'markAdd': addMark(); return;
@@ -4763,6 +4769,7 @@ window.addEventListener('keydown', e => {
   else if (k === 'i') toggleStats();
   else if (k === 'k') toggleBook();
   else if (k === 't') { setOverlay((overlay + 1) % (S.diff && S.diff !== 'sandbox' ? 4 : 3)); renderTools(); }
+  else if (k === 'p') { const bb = selected && selected.t ? selected : (hover && inB(hover.x, hover.y) ? grid[idx(hover.x, hover.y)] : null); if (bb && OFFABLE(bb.t)) { bb.off = !bb.off; sfx('place'); toast(`${BUILD[bb.t].n}: ${bb.off ? 'pysäytetty' : 'käynnissä'}`); if (selected === bb) renderInfo(); } }
   else if (k === 'u') selectTool('upgrade');
   else if (k === 'o') { $('logM').hidden = false; renderLog(); }
   else if (k === 'l') { $('bpM').hidden = false; renderBps(); }
