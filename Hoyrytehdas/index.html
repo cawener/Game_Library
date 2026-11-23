@@ -629,7 +629,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.50.8';
+const VERSION = '0.50.9';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -1944,6 +1944,21 @@ function planNext(tr) {
   }
   tr.st = 'nopath';
 }
+const dirOf = (dx, dy) => dx > 0 ? 1 : dx < 0 ? 3 : dy > 0 ? 2 : 0;
+// draw position that follows the curved track: on a tile where the train turns, map its progress onto the quarter arc
+function railTurnPos(tx, ty, a, c, s) {
+  const q = railCurveGeom((a + 2) % 4, c), an = q.a0 + q.d * s;
+  return [tx + .5 + q.cx + .5 * Math.cos(an), ty + .5 + q.cy + .5 * Math.sin(an), an + Math.sign(q.d) * Math.PI / 2];
+}
+function trainRenderPos(tr) {
+  tr.rx = tr.fx; tr.ry = tr.fy; tr.rang = tr.ang;
+  const n = tr.path && tr.path[0]; if (!n || tr.st !== 'move') return;
+  const dT = dirOf(n.x - tr.x, n.y - tr.y), t = Math.hypot(tr.fx - (tr.x + .5), tr.fy - (tr.y + .5));
+  let r = null;
+  if (t < .5) { if (tr._pd != null && tr._pd !== dT && (tr._pd + 2) % 4 !== dT) r = railTurnPos(tr.x, tr.y, tr._pd, dT, .5 + t); }
+  else { const n2 = tr.path[1]; if (n2) { const dN = dirOf(n2.x - n.x, n2.y - n.y); if (dN !== dT && (dN + 2) % 4 !== dT) r = railTurnPos(n.x, n.y, dT, dN, t - .5); } }
+  if (r) { tr.rx = r[0]; tr.ry = r[1]; tr.rang = r[2]; }
+}
 function moveOne(from, to) { for (const k in from.inv) { from.inv[k]--; from.n--; if (!from.inv[k]) delete from.inv[k]; to.inv[k] = (to.inv[k] || 0) + 1; to.n++; return; } }
 function updateTrains(dt) {
   const CAP = BUILD.train.cap;
@@ -1962,9 +1977,9 @@ function updateTrains(dt) {
         }
         const dx = nx + .5 - tr.fx, dy = ny + .5 - tr.fy, d = Math.hypot(dx, dy);
         if (d > 1e-6) tr.ang = Math.atan2(dy, dx);
-        if (d <= dist) { tr.fx = nx + .5; tr.fy = ny + .5; tr.x = nx; tr.y = ny; tr.path.shift(); dist -= d; }
+        if (d <= dist) { tr._pd = dirOf(nx - tr.x, ny - tr.y); tr.fx = nx + .5; tr.fy = ny + .5; tr.x = nx; tr.y = ny; tr.path.shift(); dist -= d; }
         else { tr.fx += dx / d * dist; tr.fy += dy / d * dist; dist = 0; }
-        trailPush(tr);
+        trainRenderPos(tr); trailPush(tr);
       }
       if (tr.st === 'move' && !tr.path.length) {
         const s2 = grid[idx(tr.x, tr.y)];
@@ -2767,12 +2782,13 @@ function railBase(b) {
 }
 function trailPush(tr) {
   const tl = tr._tl || (tr._tl = []), last = tl[tl.length - 1];
-  if (!last || Math.hypot(last[0] - tr.fx, last[1] - tr.fy) > .08) { tl.push([tr.fx, tr.fy]); if (tl.length > 60) tl.shift(); }
+  const X = tr.rx ?? tr.fx, Y = tr.ry ?? tr.fy;
+  if (!last || Math.hypot(last[0] - X, last[1] - Y) > .08) { tl.push([X, Y]); if (tl.length > 60) tl.shift(); }
 }
 // point at a given distance back along the train's trail
 function trailAt(tr, back) {
   const tl = tr._tl; if (!tl || !tl.length) return null;
-  let px = tr.fx, py = tr.fy, acc = 0;
+  let px = tr.rx ?? tr.fx, py = tr.ry ?? tr.fy, acc = 0;
   for (let k = tl.length - 1; k >= 0; k--) {
     const [qx, qy] = tl[k], seg = Math.hypot(px - qx, py - qy);
     if (acc + seg >= back) { const f = (back - acc) / (seg || 1); return [px + (qx - px) * f, py + (qy - py) * f]; }
@@ -2796,7 +2812,7 @@ function drawWagons(tr) {
   }
 }
 function drawTrain(tr, t, alpha) {
-  g.save(); g.translate(tr.fx, tr.fy); g.rotate(tr._ra ?? tr.ang); if (alpha < 1) g.globalAlpha = alpha;
+  g.save(); g.translate(tr.rx ?? tr.fx, tr.ry ?? tr.fy); g.rotate(tr._ra ?? tr.ang); if (alpha < 1) g.globalAlpha = alpha;
   g.fillStyle = 'rgba(0,0,0,.3)'; rr(-.56, -.26, 1.18, .58, .1); g.fill();
   rr(-.58, -.3, 1.14, .6, .08); g.fillStyle = '#26352e'; g.fill(); g.lineWidth = .035; g.strokeStyle = P.soot; g.stroke();
   rr(-.08, -.2, .58, .4, .18); g.fillStyle = '#1a2520'; g.fill();
@@ -3226,12 +3242,12 @@ function render(fdt) {
   // trains
   for (const tr of trains) {
     if (tr._ra == null) tr._ra = tr.ang;
-    let da = tr.ang - tr._ra; da = Math.atan2(Math.sin(da), Math.cos(da)); tr._ra += da * Math.min(1, fdt * 10);
+    let da = (tr.rang ?? tr.ang) - tr._ra; da = Math.atan2(Math.sin(da), Math.cos(da)); tr._ra += da * Math.min(1, fdt * 10);
     if (tr.fx < x0 - 1 || tr.fx > x1 + 2 || tr.fy < y0 - 1 || tr.fy > y1 + 2) continue;
     if (!tr._tl) { tr._tl = []; trailPush(tr); }
     drawWagons(tr); drawTrain(tr, t, 1);
     if (tr === selected) { g.strokeStyle = P.brassL; g.lineWidth = .06; g.setLineDash([.15, .1]); circle(tr.fx, tr.fy, .72); g.stroke(); g.setLineDash([]); }
-    if (!paused && tr.st === 'move' && Math.random() < fdt * 9) smoke(tr.fx + Math.cos(tr._ra) * .4, tr.fy + Math.sin(tr._ra) * .4, 'rgba(235,232,225,');
+    if (!paused && tr.st === 'move' && Math.random() < fdt * 9) smoke((tr.rx ?? tr.fx) + Math.cos(tr._ra) * .4, (tr.ry ?? tr.fy) + Math.sin(tr._ra) * .4, 'rgba(235,232,225,');
   }
 
   // selection rectangles
