@@ -600,7 +600,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.38';
+const VERSION = '0.39';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -711,6 +711,8 @@ const BUILD = {
                desc: 'Säilöö 400 tavaraa. Syöttö eteenpäin voidaan kytkeä päälle, jolloin toimii puskurina.' },
   splitter:  { n: 'Jakaja',        key: '7', lvl: 1, cost: { rautalevy: 4, hammasratas: 2 },
                desc: 'Jakaa tavarat vuorotellen eteen, oikealle ja vasemmalle.' },
+  smartsplit:{ n: 'Älyjakaja',     key: '', lvl: 3, cost: { teras: 4, hammasratas: 6, venttiili: 2 },
+               desc: 'Jokaiselle ulostulolle (vasen, eteen, oikea) valitaan oma tavara, "muut" tai suljettu.' },
   assembler: { n: 'Kokoonpanija',  key: '8', lvl: 1, cost: { rautalevy: 10, hammasratas: 6, kuparikela: 6 }, use: 25,
                desc: 'Valmistaa osia valitun reseptin mukaan. Kuluttaa 25 höyryä.' },
   fastbelt:  { n: 'Pikakuljetin',  key: '9', lvl: 2, cost: { rautalevy: 1, hammasratas: 1 }, speed: 3.2,
@@ -758,7 +760,7 @@ const BUILD = {
   bigboiler: { n: 'Suurkattila',   key: 'K', lvl: 4, cost: { teras: 10, tiili: 20, venttiili: 4 }, gen: 320, burnT: 3.2, cap: 40,
                desc: 'Rakennetaan veden viereen. Tuottaa 320 höyryä.' },
 };
-const TOOL_ORDER = ['tank', 'inserter', 'belt', 'pipe', 'drill', 'smelter', 'lumber', 'saw', 'boiler', 'chest', 'lamp', 'splitter', 'assembler', 'fastbelt', 'tunnel', 'drill2', 'smelter2', 'oilpipe', 'pumpjack', 'refinery', 'oilboiler', 'rail', 'signal', 'station', 'train', 'bigboiler', 'assembler2', 'mast', 'zep', 'dock'];
+const TOOL_ORDER = ['tank', 'inserter', 'belt', 'pipe', 'drill', 'smelter', 'lumber', 'saw', 'boiler', 'chest', 'lamp', 'splitter', 'smartsplit', 'assembler', 'fastbelt', 'tunnel', 'drill2', 'smelter2', 'oilpipe', 'pumpjack', 'refinery', 'oilboiler', 'rail', 'signal', 'station', 'train', 'bigboiler', 'assembler2', 'mast', 'zep', 'dock'];
 const SURVEY = [
   { r: 44, cost: { rautalevy: 150, tiili: 80 } },
   { r: 56, cost: { teras: 120, hammasratas: 120, messinki: 60 } },
@@ -778,7 +780,7 @@ const PATENTS = [
   { n: 'Paineistettu höyry', d: 'Messinkiset osat ja tiilet painekattiloiden muurauksiin.',
     cost: { hammasratas: 60, kuparikela: 80, tiili: 60, messinki: 40 }, unl: 'Teräs (sulatto), Paineventtiili, Pikakuljetin, Maanalainen kuljetin' },
   { n: 'Hienomekaniikka', d: 'Venttiilit ja teräs avaavat tien kellosepän taitoihin ja rautateille.',
-    cost: { venttiili: 40, teras: 60 }, unl: 'Kellokoneisto, Paineporakone, Masuuni, öljyketju (pumppu, putki, jalostamo, öljykattila), Rautatie, Opastin, Asema, Höyryveturi, konepäivitykset' },
+    cost: { venttiili: 40, teras: 60 }, unl: 'Kellokoneisto, Paineporakone, Masuuni, Älyjakaja, öljyketju (pumppu, putki, jalostamo, öljykattila), Rautatie, Opastin, Asema, Höyryveturi, konepäivitykset' },
   { n: 'Mäntävoima', d: 'Kellokoneistot ohjaavat mäntien tahtia. Telakka tarvitsee runkoaineita.',
     cost: { kellokoneisto: 30, teras: 120, tiili: 150 }, unl: 'Mäntämoottori, Suurkattila, Tehdashalli, Rahtimasto, Rahti-ilmalaiva' },
   { n: 'Ilmalaivatelakka', d: 'Viimeinen patentti: lupa rakentaa telakka, jolla Aurora kootaan.',
@@ -1014,6 +1016,7 @@ function makeB(t, x, y, d) {
     case 'mast': Object.assign(b, { sid: 0, mode: 'load', inv: {}, n: 0, tmr: 0 }); break;
     case 'chest': Object.assign(b, { inv: {}, n: 0, outOn: false, tmr: 0 }); break;
     case 'splitter': b.buf = []; b.rr = 0; b.filt = null; break;
+    case 'smartsplit': b.buf = []; b.rr = 0; b.outs = { 3: null, 0: null, 1: null }; break;
     case 'inserter': b.tm = 0; break;
     case 'hq': b.w = 3; b.h = 3; b.got = 0; break;
     case 'station': Object.assign(b, { sid: 0, mode: 'load', inv: {}, n: 0, tmr: 0 }); break;
@@ -1181,7 +1184,7 @@ function contents(b) {
     case 'refinery': add('voiteluoljy', b.outN); break;
     case 'mast': for (const k in b.inv) add(k, b.inv[k]); break;
     case 'chest': for (const k in b.inv) add(k, b.inv[k]); break;
-    case 'splitter': for (const i of b.buf) add(i, 1); break;
+    case 'splitter': case 'smartsplit': for (const i of b.buf) add(i, 1); break;
     case 'station': case 'train': for (const k in b.inv) add(k, b.inv[k]); break;
     case 'dock': for (const k in b.got) add(k, b.got[k]); break;
   }
@@ -1426,7 +1429,7 @@ const ACC = {
   },
   station(b, item) { if (b.mode !== 'load' || b.n >= 300) return false; b.inv[item] = (b.inv[item] || 0) + 1; b.n++; return true; },
 };
-ACC.bigboiler = ACC.boiler; ACC.saw = ACC.smelter;
+ACC.smartsplit = ACC.splitter; ACC.bigboiler = ACC.boiler; ACC.saw = ACC.smelter;
 ACC.mast = (b, item) => { if (b.mode !== 'load' || b.n >= 400) return false; b.inv[item] = (b.inv[item] || 0) + 1; b.n++; return true; }; ACC.smelter2 = ACC.smelter; ACC.assembler2 = ACC.assembler;
 ACC.dock = (b, item) => {
   if (b.launch != null) return false;
@@ -1495,6 +1498,19 @@ const UPD = {
     for (let k = 0; k < L; k++) {
       const d = (b.d + outs[(b.rr + k) % L]) % 4;
       if (insertAt(b.x + DX[d], b.y + DY[d], b.buf[0], d, b)) { b.buf.shift(); b.rr = (b.rr + k + 1) % 3; break; }
+    }
+  },
+  // smart splitter: outs[rel] = item → only that item, null → everything without its own output ("muut"), '-' → closed
+  smartsplit(b) {
+    if (!b.buf.length) return;
+    const it = b.buf[0], o = b.outs || {};
+    let cand = [3, 0, 1].filter(r => o[r] === it);
+    if (!cand.length) cand = [3, 0, 1].filter(r => o[r] == null);
+    if (!cand.length) { b.st = 'blocked'; return; }
+    b.st = 'work';
+    for (let k = 0; k < cand.length; k++) {
+      const rel = cand[(b.rr + k) % cand.length], d = (b.d + rel) % 4;
+      if (insertAt(b.x + DX[d], b.y + DY[d], it, d, b)) { b.buf.shift(); b.rr = (b.rr + k + 1) % 6; return; }
     }
   },
 };
@@ -2388,6 +2404,21 @@ const DRAW = {
     circle(0, 0, .12); g.fillStyle = P.brass; g.fill(); g.strokeStyle = P.brassD; g.lineWidth = .03; g.stroke();
     if (b.filt) { circle(0, 0, .17); g.fillStyle = P.soot; g.fill(); g.drawImage(ISPR[b.filt], -.14, -.14, .28, .28); }
   },
+  smartsplit(b) {
+    frame('#2c3036', P.brass); rivets(.37);
+    const o = b.outs || {};
+    for (const rel of [3, 0, 1]) {
+      g.save(); g.rotate((b.d + rel) * Math.PI / 2);
+      const v = o[rel];
+      g.fillStyle = v === '-' ? '#5a2a20' : P.brassD; rr(-.13, -.44, .26, .2, .04); g.fill();
+      g.beginPath(); g.moveTo(-.09, -.24); g.lineTo(.09, -.24); g.lineTo(0, -.37); g.closePath(); g.fillStyle = v === '-' ? '#a8342a' : P.brassL; g.fill();
+      g.restore();
+      // the output's item badge, kept upright
+      if (v && v !== '-' && ISPR[v]) { const a = (b.d + rel) * Math.PI / 2, px = Math.sin(a) * .2, py = -Math.cos(a) * .2; circle(px, py, .1); g.fillStyle = 'rgba(15,10,8,.9)'; g.fill(); g.drawImage(ISPR[v], px - .085, py - .085, .17, .17); }
+    }
+    circle(0, 0, .1); g.fillStyle = P.cream; g.fill(); g.lineWidth = .025; g.strokeStyle = P.brassD; g.stroke();
+    g.strokeStyle = '#2a1d12'; g.lineWidth = .02; g.beginPath(); g.moveTo(0, 0); g.lineTo(.05, -.05); g.stroke();
+  },
   smelter2(b, t) {
     g.save(); g.scale(2, 2); DRAW.smelter(b, t); g.restore();
     circle(-.62, .62, .18); g.fillStyle = P.ironD; g.fill(); circle(-.62, .62, .11); g.fillStyle = P.soot; g.fill();
@@ -2632,7 +2663,7 @@ function boilerDraw(b, t, big, oil) {
 }
 
 // ---- material finish: one shared light/shadow + grain overlay, laid over each building body (light always from the top-left)
-const FINISH = { drill: ['s', .45], drill2: ['s', .45], smelter: ['s', .45], assembler: ['s', .45], saw: ['s', .45], pumpjack: ['s', .45], splitter: ['s', .45],
+const FINISH = { drill: ['s', .45], drill2: ['s', .45], smelter: ['s', .45], assembler: ['s', .45], saw: ['s', .45], pumpjack: ['s', .45], splitter: ['s', .45], smartsplit: ['s', .45],
   lumber: ['s', .44], chest: ['s', .42], smelter2: ['s', .9], assembler2: ['s', .9], refinery: ['s', .96], dock: ['s', 1.46],
   boiler: ['r', .42], bigboiler: ['r', .47], oilboiler: ['r', .42], tank: ['r', .45], mast: ['r', .92], inserter: ['r', .3] };
 const FIN_SPR = {};
@@ -2656,7 +2687,7 @@ function finSprite(shape) {
   return (FIN_SPR[shape] = c);
 }
 function finishFx(t) { const f = FINISH[t]; if (!f) return; const h = f[1]; g.drawImage(finSprite(f[0]), -h, -h, h * 2, h * 2); }
-const LODABLE = { inserter: 1, saw: 1, lumber: 1, belt: 1, fastbelt: 1, drill: 1, drill2: 1, smelter: 1, assembler: 1, chest: 1, splitter: 1, lamp: 1, boiler: 1, bigboiler: 1, oilboiler: 1, smelter2: 1, assembler2: 1, pumpjack: 1, refinery: 1, mast: 1 };
+const LODABLE = { inserter: 1, saw: 1, lumber: 1, belt: 1, fastbelt: 1, drill: 1, drill2: 1, smelter: 1, assembler: 1, chest: 1, splitter: 1, smartsplit: 1, lamp: 1, boiler: 1, bigboiler: 1, oilboiler: 1, smelter2: 1, assembler2: 1, pumpjack: 1, refinery: 1, mast: 1 };
 const LOD_CACHE = new Map();
 let lodOn = false;
 function lodSprite(b) {
@@ -2680,6 +2711,7 @@ function spriteKey(b, t) {
     case 'belt': case 'fastbelt': { const sp = BUILD[b.t].speed, f = Math.floor((((t * sp) % .5 + .5) % .5) / .5 * 8) % 8; b._fr = f; return `${b.t}|${b.d}|${b._cv || '-'}|${f}`; }
     case 'chest': return `chest|${b.d}|${b.outOn ? 1 : 0}`; // filter icon drawn by machineOverlay
     case 'splitter': return `splitter|${b.d}|${b.filt || '-'}`;
+    case 'smartsplit': { const o = b.outs || {}; return `smartsplit|${b.d}|${o[3] || '*'}|${o[0] || '*'}|${o[1] || '*'}`; }
     case 'rail': return `rail|${armsMask(b, isRail)}|${b.d % 2}`;
     case 'pipe': { const n = netOf(b), flow = n && n.supply > 0 && n.demand > 0, col = n && n.supply > 0 ? (n.sat < .999 ? 1 : 2) : 0;
       const f = flow ? Math.floor(((t * 1.4 + b.x * .37 + b.y * .21) % 1) * 8) : 0; b._po = (f + .5) / 8; b._flow = flow;
@@ -2718,7 +2750,7 @@ function bchunkSig(cx, cy) {
     const b = grid[idx(tx, ty)];
     if (!b || IN_BCHUNK_SKIP[b.t]) { h = (Math.imul(h, 31) + 7) | 0; continue; }
     if (b.items && b.x === tx && b.y === ty) b._cv = beltCurve(b);
-    const v = (b.br ? 3 : 0) + (TCODE[b.t] || 0) * 131 + b.d * 17 + (b._cv === 'L' ? 5 : b._cv === 'R' ? 9 : 0) + (b.x === tx && b.y === ty ? 11 : 0) + (b.outOn ? 13 : 0) + (b.mode === 'unload' ? 19 : 0) + (b.pipe ? 23 : 0) + (b.opipe ? 29 : 0) + (b.kind === 'out' ? 37 : 0) + (b.up || 0) * 41;
+    const v = (b.br ? 3 : 0) + (TCODE[b.t] || 0) * 131 + b.d * 17 + (b._cv === 'L' ? 5 : b._cv === 'R' ? 9 : 0) + (b.x === tx && b.y === ty ? 11 : 0) + (b.outOn ? 13 : 0) + (b.mode === 'unload' ? 19 : 0) + (b.pipe ? 23 : 0) + (b.opipe ? 29 : 0) + (b.kind === 'out' ? 37 : 0) + (b.up || 0) * 41 + (b._ssv || 0) * 43;
     h = (Math.imul(h, 31) + v) | 0;
   }
   return h;
@@ -3310,7 +3342,7 @@ function setHTML(el, h) { if (el._h !== h) { el.innerHTML = h; el._h = h; } }
 
 const CAT_KEYS = ['Z', 'X', 'C', 'V', 'B', 'N', 'M'];
 const CATS = [
-  { id: 'log', n: 'Logistiikka', tools: ['belt', 'fastbelt', 'tunnel', 'splitter', 'inserter', 'chest', 'lamp'] },
+  { id: 'log', n: 'Logistiikka', tools: ['belt', 'fastbelt', 'tunnel', 'splitter', 'smartsplit', 'inserter', 'chest', 'lamp'] },
   { id: 'prod', n: 'Tuotanto', tools: ['drill', 'drill2', 'smelter', 'smelter2', 'assembler', 'assembler2', 'lumber', 'saw'] },
   { id: 'energy', n: 'Energia ja öljy', tools: ['pipe', 'boiler', 'tank', 'bigboiler', 'oilpipe', 'pumpjack', 'refinery', 'oilboiler'] },
   { id: 'move', n: 'Liikenne', tools: ['rail', 'signal', 'station', 'train', 'mast', 'zep'] },
@@ -3680,6 +3712,16 @@ function renderInfo() {
         Object.keys(ITEMS).filter(k => !ITEMS[k].fluid).map(k => `<button class="${b.filt === k ? 'on' : ''}" data-a="filt" data-v="${k}" title="${ITEMS[k].n}" aria-label="${ITEMS[k].n}">${icon(k)}</button>`).join('') + '</div>';
       break;
     }
+    case 'smartsplit': {
+      const o = b.outs || {}, sel = b._ssSel != null ? b._ssSel : 0, NM = { 3: 'Vasen', 0: 'Eteen', 1: 'Oikea' };
+      const lbl = v => v == null ? 'muut' : v === '-' ? 'suljettu' : ITEMS[v].n.toLowerCase();
+      h += kv('Puskurissa', b.buf.length ? b.buf.map(i => icon(i)).join(' ') : '–');
+      h += `<h3>Ulostulot</h3><div class="cmode ssout" role="group" aria-label="Valitse ulostulo">${[3, 0, 1].map(r => `<button class="sbtn${sel === r ? ' on' : ''}" data-a="ssSel" data-v="${r}">${NM[r]}<br><small>${lbl(o[r])}</small></button>`).join('')}</div>`;
+      h += `<div class="filt"><button class="${o[sel] == null ? 'on' : ''}" data-a="ssSet" data-v="*" title="Muut: kaikki, joilla ei ole omaa ulostuloa" aria-label="Muut">&#8727;</button><button class="${o[sel] === '-' ? 'on' : ''}" data-a="ssSet" data-v="-" title="Suljettu" aria-label="Suljettu">&#10005;</button>` +
+        Object.keys(ITEMS).filter(k => !ITEMS[k].fluid).map(k => `<button class="${o[sel] === k ? 'on' : ''}" data-a="ssSet" data-v="${k}" title="${ITEMS[k].n}" aria-label="${ITEMS[k].n}">${icon(k)}</button>`).join('') + '</div>';
+      h += `<p class="pat-desc">Valitse ulostulo ja sitten tavara. Tavara menee sille varattuun ulostuloon, muuten ulostuloon, jossa on <b>muut</b> (&#8727;). Jos sopivaa ulostuloa ei ole, jakaja pysähtyy.</p>`;
+      break;
+    }
     case 'belt': case 'fastbelt': h += kv('Tavaroita', b.items.length) + kv('Nopeus', BUILD[b.t].speed + ' ruutua/s') + (b.pipe ? kv('Alla', 'höyryputki') : ''); break;
     case 'hq': {
       h += '<p class="pat-desc">Kaikki tänne kuljetettu siirtyy varastoosi. Kuljettimet voivat tulla mistä tahansa sivusta.</p>';
@@ -3724,6 +3766,8 @@ function doAction(el) {
     case 'del': if (b) { removeAt(b.x, b.y); commitGrp(); } return;
     case 'mode': if (b) b.mode = el.dataset.v; break;
     case 'filt': if (b) b.filt = el.dataset.v || null; break;
+    case 'ssSel': if (b) b._ssSel = +el.dataset.v; break;
+    case 'ssSet': if (b && b.outs) { const r = b._ssSel != null ? b._ssSel : 0, v = el.dataset.v; b.outs = { ...b.outs, [r]: v === '*' ? null : v }; b._ssv = (b._ssv || 0) + 1; } break;
     case 'sigOne': if (b) { b.one = el.dataset.v === '1'; for (const tr of trains) if (tr.st === 'move') { tr.st = 'idle'; tr.tmr = 0; } } break;
     case 'upg': if (b) upgrade(b); break;
     case 'delZep': if (b) removeZep(b); return;
@@ -3931,7 +3975,7 @@ function renderStats() {
 }
 
 // ---- blueprints
-const CFG_KEYS = ['rec', 'filt', 'mode', 'outOn', 'kind', 'pipe', 'opipe'];
+const CFG_KEYS = ['rec', 'filt', 'mode', 'outOn', 'kind', 'pipe', 'opipe', 'outs'];
 function loadBps() { try { return JSON.parse(localStorage.getItem('hoyrytehdas-bps') || '[]'); } catch (e) { return []; } }
 function storeBps(list) { try { localStorage.setItem('hoyrytehdas-bps', JSON.stringify(list)); } catch (e) { toast('Kaavakirjastoa ei voitu tallentaa tähän selaimeen'); } }
 function renderBps() {
@@ -3983,6 +4027,7 @@ function cfgOf(e) { const o = {}; for (const k of CFG_KEYS) if (e[k] != null) o[
 function applyCfg(b, e) {
   if (b.t === 'assembler' && e.rec && RECIPES[e.rec] && S.level >= RECIPES[e.rec].lvl) setRecipe(b, e.rec);
   if (b.t === 'splitter') b.filt = e.filt || null;
+  if (b.t === 'smartsplit' && e.outs) b.outs = { ...e.outs };
   if (b.t === 'station' && e.mode) b.mode = e.mode;
   if (b.t === 'chest') { b.outOn = !!e.outOn; b.filt = e.filt || null; }
   if (b.t === 'tunnel' && e.kind) b.kind = e.kind;
@@ -4103,7 +4148,7 @@ function clickTile(t, mods) {
   const bb = grid[idx(t.x, t.y)];
   if (bb && mods && (mods.ctrl || mods.shift) && bb.t !== 'hq') {
     if (mods.ctrl) {
-      const c = {}; for (const k of ['rec', 'filt', 'mode', 'outOn', 'one']) if (bb[k] != null) c[k] = bb[k];
+      const c = {}; for (const k of ['rec', 'filt', 'mode', 'outOn', 'one', 'outs']) if (bb[k] != null) c[k] = bb[k];
       if (!Object.keys(c).length) { toast(`${BUILD[bb.t].n}: ei kopioitavia asetuksia`); return; }
       cfgClip = { t: bb.t, cfg: c }; toast(`Asetukset kopioitu (${BUILD[bb.t].n}). Shift + klikkaus liittää ne samanlaiseen rakennukseen.`); sfx('craft'); return;
     }
@@ -4408,7 +4453,7 @@ function buildMiniBase() {
   }
   x.putImageData(im, 0, 0);
 }
-const MINI_COL = { tank: '#d8eef2', inserter: '#c9a14a', saw: '#c49058', lumber: '#6a8a3a', oilpipe: '#3a3346', pumpjack: '#8a6ab0', refinery: '#6a5f80', oilboiler: '#8a8496', mast: '#ead08a', dock: '#ead08a', smelter2: '#c0563a', assembler2: '#e0935c', tunnel: '#c06d3c', signal: '#6dff7a', lamp: '#ffe9a0', belt: '#9c8250', fastbelt: '#c06d3c', pipe: '#b8693a', rail: '#c8ccd0', station: '#4f8a76', hq: '#ead08a', chest: '#8a5d33', boiler: '#e0935c', bigboiler: '#ead08a' };
+const MINI_COL = { smartsplit: '#9aa6b2', tank: '#d8eef2', inserter: '#c9a14a', saw: '#c49058', lumber: '#6a8a3a', oilpipe: '#3a3346', pumpjack: '#8a6ab0', refinery: '#6a5f80', oilboiler: '#8a8496', mast: '#ead08a', dock: '#ead08a', smelter2: '#c0563a', assembler2: '#e0935c', tunnel: '#c06d3c', signal: '#6dff7a', lamp: '#ffe9a0', belt: '#9c8250', fastbelt: '#c06d3c', pipe: '#b8693a', rail: '#c8ccd0', station: '#4f8a76', hq: '#ead08a', chest: '#8a5d33', boiler: '#e0935c', bigboiler: '#ead08a' };
 function drawMini() {
   if (!miniBase && terrain) buildMiniBase();
   if ($('mini').hidden || !miniBase || !miniC.offsetWidth) return;
