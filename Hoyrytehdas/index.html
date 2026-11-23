@@ -449,6 +449,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <kbd>Liuskat ylhäällä</kbd><span>Opastus, Varasto, Patentit ja Kartta avautuvat laatikoiksi. Napauta liuskaa uudelleen tai karttaa sulkeaksesi. Opastus-liuska näkyy, kunnes opastus on suoritettu tai ohitettu</span>
       <kbd>Kartta</kbd><span>Napauta tai vedä minikarttaa siirtyäksesi</span>
       <kbd>☰-valikko</kbd><span>Loki, ääni päälle tai pois, Tuotekirja ja tuotantolaskuri, Tilastot, Ohjeet, Tallenna ja päävalikko</span>
+      <kbd>Grafiikan laatu</kbd><span>Valikko → Asetukset. Tasapainoinen on puhelimen oletus. Säästö kevyin, jos peli nykii tai akku hupenee</span>
       <kbd>Tauko ja nopeus</kbd><span>Yläpalkin napit: Tauko, 1×, 2× ja 4×</span>
     </div>
     <div class="keys" id="helpPc">
@@ -551,6 +552,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <label for="setVol">Äänitehosteet</label><input type="range" id="setVol" min="0" max="1" step="0.05">
       <label for="setMusic">Musiikki</label><span class="row2"><input type="checkbox" id="setMusic"><input type="range" id="setMusicVol" min="0" max="1" step="0.05" aria-label="Musiikin voimakkuus"></span>
       <label for="setNight">Vuorokausirytmi</label><span class="row2"><input type="checkbox" id="setNight"><span class="rate">Yöt ja valaistus</span></span>
+      <label for="setQual">Grafiikan laatu</label><select id="setQual"><option value="">Automaattinen</option><option value="high">Tarkka</option><option value="mid">Tasapainoinen</option><option value="low">Säästö (kevyin)</option></select>
       <label for="setAuto">Automaattitallennus</label><select id="setAuto"><option value="15">15 s välein</option><option value="30">30 s välein</option><option value="60">1 min välein</option><option value="0">Pois</option></select>
     </div>
     <div class="acts"><button class="sbtn" data-a="tutAgain">Näytä opastus uudelleen</button></div>
@@ -576,7 +578,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.32';
+const VERSION = '0.33';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -1879,11 +1881,12 @@ function updateTrains(dt) {
    ========================================================= */
 const cv = document.getElementById('cv');
 let ctx = cv.getContext('2d'), g = ctx;
-let dpr = 1, CW = 0, CH = 0;
+let dpr = 1, CW = 0, CH = 0, QUAL_CAP = 2;
+const QUALS = { high: 2, mid: 1.5, low: 1 };
 function resize() {
   const tb = document.getElementById('top'); if (tb) document.documentElement.style.setProperty('--topH', tb.offsetHeight + 'px');
   const tl = document.getElementById('tools'); if (tl) document.documentElement.style.setProperty('--toolsB', (innerHeight - tl.getBoundingClientRect().top + 8) + 'px');
-  dpr = Math.min(2, window.devicePixelRatio || 1);
+  dpr = Math.min(QUAL_CAP, window.devicePixelRatio || 1);
   CW = cv.clientWidth; CH = cv.clientHeight;
   cv.width = Math.round(CW * dpr); cv.height = Math.round(CH * dpr);
 }
@@ -2118,7 +2121,7 @@ const DRAW = {
     g.beginPath(); g.moveTo(-.2, -.18); g.lineTo(-.2, -.3); g.arc(0, -.3, .2, Math.PI, 0); g.lineTo(.2, -.18); g.closePath();
     g.fillStyle = P.soot; g.fill(); g.strokeStyle = P.ironD; g.lineWidth = .04; g.stroke();
     const a = b.act || 0;
-    if (a > 0) { g.fillStyle = `rgba(255,${140 + 40 * Math.sin(t * 9 + b.x)},50,${.55 + .35 * a})`; g.fill(); }
+    if (a > 0) { const fq = b._sprite && b._fq ? b._fq : null; g.fillStyle = `rgba(255,${140 + 40 * (fq ? fq[0] : Math.sin(t * 9 + b.x))},50,${.55 + .35 * (fq ? fq[1] : a)})`; g.fill(); }
     circle(.25, .25, .11); g.fillStyle = P.ironD; g.fill(); circle(.25, .25, .065); g.fillStyle = P.soot; g.fill();
     g.restore();
     if (b.outT) { g.drawImage(ISPR[b.outT], -.17, .02, .3, .3); }
@@ -2552,6 +2555,7 @@ let shX = .08, shY = .1;
 const SPR = new Map();
 let sprPx = 32;
 function armsMask(b, pred) { let m = 0; for (let d = 0; d < 4; d++) { const nx = b.x + DX[d], ny = b.y + DY[d]; if (inB(nx, ny) && pred(grid[idx(nx, ny)])) m |= 1 << d; } return m; }
+const TAU = Math.PI * 2, AQ = 48;
 function spriteKey(b, t) {
   switch (b.t) {
     case 'belt': case 'fastbelt': { const sp = BUILD[b.t].speed, f = Math.floor((((t * sp) % .5 + .5) % .5) / .5 * 8) % 8; b._fr = f; return `${b.t}|${b.d}|${b._cv || '-'}|${f}`; }
@@ -2562,18 +2566,27 @@ function spriteKey(b, t) {
       const f = flow ? Math.floor(((t * 1.4 + b.x * .37 + b.y * .21) % 1) * 8) : 0; b._po = (f + .5) / 8; b._flow = flow;
       return `pipe|${armsMask(b, conducts)}|${col}|${flow ? f : '-'}`; }
     case 'lamp': return `lamp|${Math.round(nightness * 4)}`;
+    case 'drill': case 'drill2': case 'assembler': { const q = Math.round(((((b._a || 0) % TAU) + TAU) % TAU) / TAU * AQ) % AQ; b._aq = q * TAU / AQ; return `${b.t}|${b.d}|${q}`; }
+    case 'inserter': { const sq = Math.round((b._sw || 0) * 10), q = Math.round(((((b._a || 0) * 2 % TAU) + TAU) % TAU) / TAU * 16) % 16; b._swq = sq / 10; b._aq = q * TAU / 16 / 2; return `inserter|${b.d}|${sq}|${q}|${sq > 5 && b._hold ? b._hold : '-'}`; }
+    case 'smelter': { const a = b.act || 0; if (a <= 0) { b._fq = null; return `smelter|${b.d}|-`; } const f = Math.round((.5 + .5 * Math.sin(t * 9 + b.x)) * 3), aq = Math.round(a * 3); b._fq = [f / 3 * 2 - 1, aq / 3]; return `smelter|${b.d}|${f}|${aq}`; }
     default: return null;
   }
 }
 function cachedSprite(b, t, key) {
   const k = key + '|' + sprPx; let c = SPR.get(k);
   if (c) return c;
-  if (SPR.size > 900) SPR.clear();
+  if (SPR.size > 2400) SPR.clear();
   const w = b.w || 1; c = mk(Math.ceil(w * sprPx));
   const g0 = g; g = c.getContext('2d'); g.scale(sprPx, sprPx); g.translate(w / 2, w / 2);
   let tt = t;
   if (b.t === 'belt' || b.t === 'fastbelt') tt = (b._fr / 8 * .5) / BUILD[b.t].speed;
+  const a0 = b._a, rec = b.rec, outT = b.outT;
+  const sw0 = b._sw;
+  if (b._aq != null && (b.t === 'drill' || b.t === 'drill2' || b.t === 'assembler' || b.t === 'inserter')) b._a = b._aq;
+  if (b.t === 'inserter') b._sw = b._swq;
+  if (b.t === 'assembler') b.rec = null; if (b.t === 'smelter') { b.outT = null; b._sprite = true; }
   DRAW[b.t](b, tt); g = g0;
+  b._a = a0; b._sw = sw0; b.rec = rec; b.outT = outT; b._sprite = false;
   SPR.set(k, c); return c;
 }
 // ---- building chunks for the zoomed-out view
@@ -2629,12 +2642,16 @@ function drawDeck(b) {
   g.fillStyle = '#7a5a36'; g.fillRect(x + .04, y + .04, .92, .92);
   g.strokeStyle = 'rgba(40,26,14,.6)'; g.lineWidth = .025; g.beginPath(); for (let k = 1; k < 5; k++) { g.moveTo(x + .04 + k * .184, y + .04); g.lineTo(x + .04 + k * .184, y + .96); } g.stroke();
 }
+function machineOverlay(b) { // per-building details kept out of the shared sprite cache
+  if (b.t === 'assembler' && b.rec) { circle(b.x + .74, b.y + .74, .16); g.fillStyle = 'rgba(20,14,10,.85)'; g.fill(); g.drawImage(ISPR[b.rec], b.x + .61, b.y + .61, .26, .26); }
+  else if (b.t === 'smelter' && b.outT) g.drawImage(ISPR[b.outT], b.x + .33, b.y + .52, .3, .3);
+}
 function drawB(b, t, alpha) {
   const w = b.w || 1;
   if (b.br) drawDeck(b);
   if (alpha >= 1) {
     if (lodOn && LODABLE[b.t]) { g.drawImage(lodSprite(b), b.x, b.y, w, w); return; }
-    if (!b.up) { const key = spriteKey(b, t); if (key) { g.drawImage(cachedSprite(b, t, key), b.x, b.y, w, w); return; } }
+    if (!b.up) { const key = spriteKey(b, t); if (key) { g.drawImage(cachedSprite(b, t, key), b.x, b.y, w, w); machineOverlay(b); return; } }
   }
   g.save(); g.translate(b.x + w / 2, b.y + w / 2);
   if (alpha < 1) g.globalAlpha = alpha;
@@ -4279,6 +4296,8 @@ let actx = null, muted = false, lastSfx = {};
 try { muted = localStorage.getItem('hoyrytehdas-mute') === '1'; } catch (e) {}
 const PREF = { vol: .8, music: true, musicVol: .5, autosave: 30 };
 try { Object.assign(PREF, JSON.parse(localStorage.getItem('hoyrytehdas-prefs') || '{}')); } catch (e) {}
+function applyQuality() { const q = PREF.quality || (matchMedia('(pointer: coarse)').matches ? 'mid' : 'high'); QUAL_CAP = QUALS[q] || 2; resize(); }
+applyQuality();
 function savePrefs() { try { localStorage.setItem('hoyrytehdas-prefs', JSON.stringify(PREF)); } catch (e) {} }
 let masterG = null, musicG = null;
 function audio() {
@@ -4343,9 +4362,10 @@ function renderSlots() {
 function syncSettings() {
   renderSlots();
   $('setVol').value = PREF.vol; $('setMusic').checked = PREF.music; $('setMusicVol').value = PREF.musicVol;
-  $('setNight').checked = !S.noNight; $('setAuto').value = String(PREF.autosave);
+  $('setNight').checked = !S.noNight; $('setAuto').value = String(PREF.autosave); $('setQual').value = PREF.quality || '';
 }
-for (const id of ['setVol', 'setMusic', 'setMusicVol', 'setNight', 'setAuto']) $(id).addEventListener('input', () => {
+for (const id of ['setVol', 'setMusic', 'setMusicVol', 'setNight', 'setAuto', 'setQual']) $(id).addEventListener('input', () => {
+  const nq = $('setQual').value || null; if (nq !== (PREF.quality || null)) { PREF.quality = nq; applyQuality(); }
   PREF.vol = +$('setVol').value; PREF.music = $('setMusic').checked; PREF.musicVol = +$('setMusicVol').value; PREF.autosave = +$('setAuto').value;
   S.noNight = !$('setNight').checked; savePrefs(); audio(); if (PREF.music) startMusic();
 });
