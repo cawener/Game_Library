@@ -123,6 +123,8 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--copper), var(--brass)); }
 .bar i.done { background: var(--ok); }
 .rate { color: var(--muted); font-size: 11px; }
+.devinv { grid-template-columns: 22px 1fr auto auto; }
+.devinv .sbtn { padding: 0 9px; min-width: 30px; height: 24px; line-height: 1; font-size: 15px; }
 .devlv { border: 1px dashed var(--brass-dark); border-radius: 5px; padding: 8px 10px; }
 .devrow { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 6px 0 2px; }
 .devrow b { font-family: var(--display); font-size: 22px; color: var(--brass-light); min-width: 70px; text-align: center; font-variant-numeric: tabular-nums; }
@@ -614,7 +616,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.42';
+const VERSION = '0.50';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -3364,6 +3366,7 @@ let tipItemEl = null;
 document.addEventListener('pointerover', e => {
   const el = e.target.closest && e.target.closest('[data-item]');
   if (el && el.closest('#tip')) return;
+  if (el && e.target.closest('button') && e.pointerType !== 'mouse') return; // tapping a button inside a product row should not pop its info
   if (el) { if (el !== tipItemEl) { tipItemEl = el; showTip(el, itemInfoHTML(el.dataset.item)); } return; }
   if (tipItemEl) { tipItemEl = null; if (!(e.target.closest && e.target.closest('[data-tool]'))) $('tip').hidden = true; }
 });
@@ -3449,9 +3452,13 @@ function selectTool(k) {
 }
 
 function renderInv() {
+  if (S.dev) { // developer mode: every product listed with a + button
+    setHTML($('invList'), '<div class="rate">Dev-tila: + lisää 100 kpl</div>' + Object.keys(ITEMS).filter(k => !ITEMS[k].fluid).map(k => `<div class="irow devinv" data-item="${k}">${icon(k)}<span class="n">${ITEMS[k].n}</span><span class="c">${fmt(S.inv[k] || 0)}</span><button class="sbtn" data-a="devAdd" data-v="${k}" aria-label="Lisää 100 ${ITEMS[k].n}">+</button></div>`).join(''));
+  } else {
   const keys = Object.keys(ITEMS).filter(k => S.inv[k] > 0);
   let h = keys.length ? keys.map(k => `<div class="irow" data-item="${k}">${icon(k)}<span class="n">${ITEMS[k].n}</span><span class="c">${fmt(S.inv[k])}</span></div>`).join('') : '<div class="empty">Varasto on tyhjä.</div>';
   setHTML($('invList'), h);
+  }
   let c = '';
   for (const k in RECIPES) {
     const r = RECIPES[k]; if (!r.hand || S.level < r.lvl) continue;
@@ -3819,9 +3826,10 @@ function doAction(el) {
     case 'mute': muted = !muted; try { localStorage.setItem('hoyrytehdas-mute', muted ? '1' : '0'); } catch (e) {} el.textContent = muted ? 'Ääni pois' : 'Ääni päällä'; audio(); if (!muted) { sfx('craft'); startMusic(); } return;
     case 'slotSave': try { localStorage.setItem(slotKey(el.dataset.v), serialize()); localStorage.setItem(slotKey(el.dataset.v) + '-meta', JSON.stringify({ when: Date.now(), time: S.time, level: S.level, n: blist.length })); toast(`Tallennettu paikkaan ${el.dataset.v}`); } catch (err) { toast('Tallennus ei onnistunut: selaimen tallennustila voi olla täynnä'); } renderSlots(); return;
     case 'slotLoad': try { const str = localStorage.getItem(slotKey(el.dataset.v)); if (!str) return; restore(str); $('newg').hidden = true; closeInfo(); renderTools(); renderInv(); renderGoal(); save(); toast(`Ladattu paikasta ${el.dataset.v}`); } catch (err) { toast('Tallennusta ei voitu ladata'); } return;
+    case 'devAdd': if (S.dev && ITEMS[el.dataset.v]) { give(el.dataset.v, 100); renderInv(); renderGoal(); } return;
     case 'devOpen': devAsk = true; renderDev(); return;
     case 'devTry': devTry(); return;
-    case 'devOff': S.dev = false; renderDev(); renderGoal(); toast('Dev-tila pois'); save(); return;
+    case 'devOff': S.dev = false; renderDev(); renderGoal(); renderInv(); toast('Dev-tila pois'); save(); return;
     case 'devLv': { const nl = Math.max(0, Math.min(PATENTS.length, S.level + +el.dataset.v)); if (nl === S.level) return; S.level = nl; renderTools(); renderGoal(); renderInv(); toast(`Dev-tila: patenttitaso ${S.level}${S.level ? ' (' + PATENTS[S.level - 1].n + ')' : ''}`); return; }
     case 'tutAgain': S.tut = 0; $('newg').hidden = true; renderGoal(); toast('Opastus alkaa alusta'); return;
     case 'alert': jumpAlert(); return;
@@ -4598,7 +4606,7 @@ function renderDev() {
 }
 function devTry() {
   const i = $('devPw'); if (!i) return;
-  if (i.value === 'devaus') { S.dev = true; devAsk = false; renderDev(); renderGoal(); toast('Dev-tila päällä: patenttitason voi valita Patentit-paneelista'); save(); }
+  if (i.value === 'devaus') { S.dev = true; devAsk = false; renderDev(); renderGoal(); renderInv(); toast('Dev-tila päällä: patenttitason voi valita Patentit-paneelista'); save(); }
   else { $('devErr').textContent = 'Väärä salasana'; i.value = ''; i.focus(); sfx('error'); }
 }
 function syncSettings() {
