@@ -214,6 +214,9 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 #pins button { display: grid; grid-template-columns: 20px auto auto; gap: 6px; align-items: center; padding: 4px 9px; background: rgba(20,15,11,.9); border: 1px solid var(--brass-dark); border-radius: 4px; color: var(--parchment); font-size: 13px; font-variant-numeric: tabular-nums; cursor: pointer; text-align: left; }
 #pins button .ic { width: 18px; height: 18px; }
 #pins .r { color: var(--ok); } #pins .r.z { color: var(--muted); } #pins .c { color: var(--muted); }
+.curTool { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.curTool button { display: inline-flex; align-items: center; gap: 5px; background: #3a2c1c; border: 1px solid var(--brass); color: var(--brass-light); font-size: 11px; padding: 2px 7px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+.curTool img { width: 16px; height: 16px; } .curTool .ctX { padding: 2px 6px; }
 #toast div { background: rgba(20,15,11,.95); border: 1px solid var(--brass); border-radius: 4px; padding: 7px 14px; font-size: 14px; animation: fade 3.2s forwards; }
 @keyframes fade { 0%{opacity:0;transform:translateY(-6px)} 8%{opacity:1;transform:none} 80%{opacity:1} 100%{opacity:0} }
 
@@ -625,7 +628,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.50.5';
+const VERSION = '0.50.6';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -762,6 +765,8 @@ const BUILD = {
                desc: 'Sahaa puusta lankkuja (1 puu → 2 lankkua, 1,5 s). Lankkuja tarvitaan asemiin, rahtimastoihin ja Auroran runkoon. Kuluttaa 15 höyryä.' },
   lumber:    { n: 'Metsuri',       key: '', lvl: 1, cost: { rautalevy: 10, hammasratas: 6, tiili: 6 }, use: 10, radius: 4,
                desc: 'Kaataa puita 4 ruudun säteellä ja istuttaa uudet tilalle; ne kasvavat kahdessa minuutissa. Syöttää puut nuolen suuntaan. Kuluttaa 10 höyryä.' },
+  longins:   { n: 'Pitkä syöttökoura', key: '', lvl: 2, cost: { rautalevy: 4, hammasratas: 4, kuparikela: 2 }, reach: 2,
+               desc: 'Kuin syöttökoura, mutta ulottuu kahden ruudun päähän: ottaa kahden ruudun takaa ja vie kahden ruudun eteen, esimerkiksi toisen hihnan yli. Ei tarvitse höyryä.' },
   inserter:  { n: 'Syöttökoura',   key: '', lvl: 1, cost: { rautalevy: 3, hammasratas: 2 },
                desc: 'Jousikäyttöinen koura siirtää tavaroita takaa nuolen suuntaan. Hihnalta se poimii vain tavarat, jotka kohde ottaa vastaan; muut jatkavat matkaa. Ottaa myös varastoista ja koneiden valmiista tuotteista. Ei tarvitse höyryä.' },
   lamp:      { n: 'Kaasulyhty',    key: 'L', lvl: 0, cost: { rautalevy: 2, kuparilevy: 1 },
@@ -789,7 +794,7 @@ const BUILD = {
   bigboiler: { n: 'Suurkattila',   key: 'K', lvl: 4, cost: { teras: 10, tiili: 20, venttiili: 4 }, gen: 320, burnT: 3.2, cap: 40,
                desc: 'Rakennetaan veden viereen. Tuottaa 320 höyryä.' },
 };
-const TOOL_ORDER = ['tank', 'inserter', 'belt', 'pipe', 'valve', 'upipe', 'drill', 'smelter', 'lumber', 'saw', 'boiler', 'chest', 'lamp', 'splitter', 'smartsplit', 'assembler', 'fastbelt', 'tunnel', 'drill2', 'smelter2', 'oilpipe', 'pumpjack', 'refinery', 'oilboiler', 'rail', 'signal', 'station', 'train', 'bigboiler', 'assembler2', 'mast', 'zep', 'dock'];
+const TOOL_ORDER = ['tank', 'inserter', 'longins', 'belt', 'pipe', 'valve', 'upipe', 'drill', 'smelter', 'lumber', 'saw', 'boiler', 'chest', 'lamp', 'splitter', 'smartsplit', 'assembler', 'fastbelt', 'tunnel', 'drill2', 'smelter2', 'oilpipe', 'pumpjack', 'refinery', 'oilboiler', 'rail', 'signal', 'station', 'train', 'bigboiler', 'assembler2', 'mast', 'zep', 'dock'];
 const SURVEY = [
   { r: 44, cost: { rautalevy: 150, tiili: 80 } },
   { r: 56, cost: { teras: 120, hammasratas: 120, messinki: 60 } },
@@ -807,7 +812,7 @@ const PATENTS = [
   { n: 'Hammasvälitys', d: 'Patenttivirasto haluaa nähdä, että laakso pystyy sarjatuotantoon.',
     cost: { rautalevy: 60, kuparilevy: 40 }, unl: 'Kokoonpanija, Jakaja, Syöttökoura, Venttiili, Messinki (kupari + sinkki), Saha, Metsuri' },
   { n: 'Paineistettu höyry', d: 'Messinkiset osat ja tiilet painekattiloiden muurauksiin.',
-    cost: { hammasratas: 60, kuparikela: 80, tiili: 60, messinki: 40 }, unl: 'Teräs (sulatto), Paineventtiili, Pikakuljetin, Maanalainen kuljetin, Maanalainen putki' },
+    cost: { hammasratas: 60, kuparikela: 80, tiili: 60, messinki: 40 }, unl: 'Teräs (sulatto), Paineventtiili, Pikakuljetin, Maanalainen kuljetin, Maanalainen putki, Pitkä syöttökoura' },
   { n: 'Hienomekaniikka', d: 'Venttiilit ja teräs avaavat tien kellosepän taitoihin ja rautateille.',
     cost: { venttiili: 40, teras: 60 }, unl: 'Kellokoneisto, Paineporakone, Masuuni, Älyjakaja, öljyketju (pumppu, putki, jalostamo, öljykattila), Rautatie, Opastin, Asema, Höyryveturi, konepäivitykset' },
   { n: 'Mäntävoima', d: 'Kellokoneistot ohjaavat mäntien tahtia. Telakka tarvitsee runkoaineita.',
@@ -1047,7 +1052,7 @@ function makeB(t, x, y, d) {
     case 'splitter': b.buf = []; b.rr = 0; b.filt = null; break;
     case 'valve': b.open = true; break;
     case 'smartsplit': b.buf = []; b.rr = 0; b.outs = { 3: null, 0: null, 1: null }; break;
-    case 'inserter': b.tm = 0; break;
+    case 'inserter': case 'longins': b.tm = 0; break;
     case 'hq': b.w = 3; b.h = 3; b.got = 0; break;
     case 'station': Object.assign(b, { sid: 0, mode: 'load', inv: {}, n: 0, tmr: 0 }); break;
   }
@@ -1321,6 +1326,7 @@ function frontTiles(b) {
   }
   return out;
 }
+const pushFrontG = (b, item) => pushFront(b, item);
 function pushFront(b, item) {
   if ((b.w || 1) === 1) return insertAt(b.x + DX[b.d], b.y + DY[b.d], item, b.d, b);
   const ft = frontTiles(b), n = ft.length; b._oi = b._oi || 0;
@@ -1575,9 +1581,10 @@ UPD.saw = UPD.smelter;
 UPD.inserter = (b, dt) => {
   b.tm -= dt; if (b.tm > 0) return;
   b.tm = .15;
-  const bk = (b.d + 2) % 4, sx = b.x + DX[bk], sy = b.y + DY[bk];
+  const R = BUILD[b.t].reach || 1, bk = (b.d + 2) % 4, sx = b.x + DX[bk] * R, sy = b.y + DY[bk] * R;
   const src = inB(sx, sy) ? grid[idx(sx, sy)] : null;
   if (!src) { b.st = 'idle'; return; }
+  const pushFront = R === 1 ? pushFrontG : (bb, it) => insertAt(bb.x + DX[bb.d] * R, bb.y + DY[bb.d] * R, it, bb.d, bb);
   const moved = () => { b.tm = .6 / UP_SPEED[upl(b)]; b._sw = 1; b.st = 'work'; };
   if (src.items) {
     const seen = new Set();
@@ -1595,6 +1602,7 @@ UPD.inserter = (b, dt) => {
   }
   b.st = 'idle';
 };
+UPD.longins = UPD.inserter;
 UPD.lumber = (b, dt) => {
   if (b.outN > 0 && pushFront(b, 'puu')) b.outN--;
   if (b.outN >= 6) { b.act = 0; b.st = 'blocked'; return; }
@@ -2423,18 +2431,21 @@ const DRAW = {
     b._red = red;
     if (b.one) { g.save(); g.rotate(b.d * Math.PI / 2); g.beginPath(); g.moveTo(-.16, .02); g.lineTo(.16, .02); g.lineTo(0, -.2); g.closePath(); g.fillStyle = P.brassL; g.fill(); g.strokeStyle = P.soot; g.lineWidth = .02; g.stroke(); g.restore(); }
   },
+  longins(b, t) { DRAW.inserter(b, t); },
   inserter(b, t) {
-    circle(0, 0, .3); g.fillStyle = metal('#3a3d42', -.3, -.3, .3, .3); g.fill(); g.lineWidth = .04; g.strokeStyle = P.brassD; g.stroke();
+    const LG = b.t === 'longins';
+    circle(0, 0, .3); g.fillStyle = metal(LG ? '#5a3a24' : '#3a3d42', -.3, -.3, .3, .3); g.fill(); g.lineWidth = .04; g.strokeStyle = LG ? P.copper : P.brassD; g.stroke();
     g.save(); g.rotate(b.d * Math.PI / 2);
     g.fillStyle = 'rgba(234,208,138,.25)'; g.beginPath(); g.moveTo(-.08, .42); g.lineTo(.08, .42); g.lineTo(0, .3); g.closePath(); g.fill();
-    const sw = b._sw || 0, th = (1 - sw) * Math.PI, ex = Math.sin(th) * .34, ey = -Math.cos(th) * .34;
+    const sw = b._sw || 0, th = (1 - sw) * Math.PI, AL = LG ? .52 : .34, ex = Math.sin(th) * AL, ey = -Math.cos(th) * AL;
     g.strokeStyle = P.brass; g.lineWidth = .09; g.lineCap = 'round'; g.beginPath(); g.moveTo(0, 0); g.lineTo(ex * .55 + .08, ey * .55); g.lineTo(ex, ey); g.stroke(); g.lineCap = 'butt';
     circle(ex * .55 + .08, ey * .55, .05); g.fillStyle = P.brassL; g.fill();
     g.strokeStyle = P.ironL; g.lineWidth = .04; g.beginPath(); g.moveTo(ex - .07, ey - .04); g.lineTo(ex, ey + .05); g.lineTo(ex + .07, ey - .04); g.stroke();
     if (sw > .55 && b._hold && ISPR[b._hold]) g.drawImage(ISPR[b._hold], ex - .12, ey - .12, .24, .24);
     g.restore();
-    gear(.13, 8, (b._a || 0) * 2, P.brass, P.brassD);
+    gear(.13, 8, (b._a || 0) * 2, LG ? P.copperL : P.brass, LG ? P.copperD : P.brassD);
     arrow(b.d);
+    if (LG) { g.save(); g.rotate(b.d * Math.PI / 2); g.translate(0, -.12); arrow(0); g.restore(); } // double chevron = long reach
   },
   tank(b, t) {
     const n = iconMode ? null : netOf(b), f = iconMode ? .6 : (b.stor || 0) / BUILD.tank.store;
@@ -2775,7 +2786,7 @@ function boilerDraw(b, t, big, oil) {
 // ---- material finish: one shared light/shadow + grain overlay, laid over each building body (light always from the top-left)
 const FINISH = { drill: ['s', .45], drill2: ['s', .45], smelter: ['s', .45], assembler: ['s', .45], saw: ['s', .45], pumpjack: ['s', .45], splitter: ['s', .45], smartsplit: ['s', .45],
   lumber: ['s', .44], chest: ['s', .42], smelter2: ['s', .9], assembler2: ['s', .9], refinery: ['s', .96], dock: ['s', 1.46],
-  boiler: ['r', .42], bigboiler: ['r', .47], oilboiler: ['r', .42], tank: ['r', .45], mast: ['r', .92], inserter: ['r', .3] };
+  boiler: ['r', .42], bigboiler: ['r', .47], oilboiler: ['r', .42], tank: ['r', .45], mast: ['r', .92], inserter: ['r', .3], longins: ['r', .3] };
 const FIN_SPR = {};
 function finSprite(shape) {
   if (FIN_SPR[shape]) return FIN_SPR[shape];
@@ -2797,7 +2808,7 @@ function finSprite(shape) {
   return (FIN_SPR[shape] = c);
 }
 function finishFx(t) { const f = FINISH[t]; if (!f) return; const h = f[1]; g.drawImage(finSprite(f[0]), -h, -h, h * 2, h * 2); }
-const LODABLE = { inserter: 1, saw: 1, lumber: 1, belt: 1, fastbelt: 1, drill: 1, drill2: 1, smelter: 1, assembler: 1, chest: 1, splitter: 1, smartsplit: 1, lamp: 1, boiler: 1, bigboiler: 1, oilboiler: 1, smelter2: 1, assembler2: 1, pumpjack: 1, refinery: 1, mast: 1 };
+const LODABLE = { longins: 1, inserter: 1, saw: 1, lumber: 1, belt: 1, fastbelt: 1, drill: 1, drill2: 1, smelter: 1, assembler: 1, chest: 1, splitter: 1, smartsplit: 1, lamp: 1, boiler: 1, bigboiler: 1, oilboiler: 1, smelter2: 1, assembler2: 1, pumpjack: 1, refinery: 1, mast: 1 };
 const LOD_CACHE = new Map();
 let lodOn = false;
 function lodSprite(b) {
@@ -2828,7 +2839,7 @@ function spriteKey(b, t) {
       return `pipe|${armsMask(b, pipeLink)}|${col}|${flow ? f : '-'}`; }
     case 'lamp': return `lamp|${Math.round(nightness * 4)}`;
     case 'drill': case 'drill2': case 'assembler': { const q = Math.round(((((b._a || 0) % TAU) + TAU) % TAU) / TAU * AQ) % AQ; b._aq = q * TAU / AQ; return `${b.t}|${b.d}|${q}`; }
-    case 'inserter': { const sq = Math.round((b._sw || 0) * 10), q = Math.round(((((b._a || 0) * 2 % TAU) + TAU) % TAU) / TAU * 16) % 16; b._swq = sq / 10; b._aq = q * TAU / 16 / 2; return `inserter|${b.d}|${sq}|${q}|${sq > 5 && b._hold ? b._hold : '-'}`; }
+    case 'inserter': case 'longins': { const sq = Math.round((b._sw || 0) * 10), q = Math.round(((((b._a || 0) * 2 % TAU) + TAU) % TAU) / TAU * 16) % 16; b._swq = sq / 10; b._aq = q * TAU / 16 / 2; return `${b.t}|${b.d}|${sq}|${q}|${sq > 5 && b._hold ? b._hold : '-'}`; }
     case 'smelter': { const a = b.act || 0; if (a <= 0) { b._fq = null; return `smelter|${b.d}|-`; } const f = Math.round((.5 + .5 * Math.sin(t * 9 + b.x)) * 3), aq = Math.round(a * 3); b._fq = [f / 3 * 2 - 1, aq / 3]; return `smelter|${b.d}|${f}|${aq}`; }
     default: return null;
   }
@@ -2843,8 +2854,8 @@ function cachedSprite(b, t, key) {
   if (b.t === 'belt' || b.t === 'fastbelt') tt = (b._fr / 8 * .5) / BUILD[b.t].speed;
   const a0 = b._a, rec = b.rec, outT = b.outT;
   const sw0 = b._sw;
-  if (b._aq != null && (b.t === 'drill' || b.t === 'drill2' || b.t === 'assembler' || b.t === 'inserter')) b._a = b._aq;
-  if (b.t === 'inserter') b._sw = b._swq;
+  if (b._aq != null && (b.t === 'drill' || b.t === 'drill2' || b.t === 'assembler' || b.t === 'inserter' || b.t === 'longins')) b._a = b._aq;
+  if (b.t === 'inserter' || b.t === 'longins') b._sw = b._swq;
   if (b.t === 'assembler') b.rec = null; if (b.t === 'smelter') { b.outT = null; b._sprite = true; }
   DRAW[b.t](b, tt); finishFx(b.t); g = g0;
   b._a = a0; b._sw = sw0; b.rec = rec; b.outT = outT; b._sprite = false;
@@ -3096,7 +3107,7 @@ function render(fdt) {
       rr(b.x - .04, b.y - .04, (b.w || 1) + .08, (b.h || 1) + .08, .12); g.stroke(); g.restore();
     }
     if (b._sw) b._sw = Math.max(0, b._sw - fdt * 2.2);
-    if (b.t === 'inserter' && b.st === 'work') b._a = (b._a || 0) + fdt * 2;
+    if ((b.t === 'inserter' || b.t === 'longins') && b.st === 'work') b._a = (b._a || 0) + fdt * 2;
     if (b._jamT != null && S.time - b._jamT < 1.5) { circle(b.x + (b.w || 1) - .18, b.y + .18, .1); g.fillStyle = '#e0c040'; g.fill(); g.strokeStyle = P.soot; g.lineWidth = .02; g.stroke(); }
     // status pip
     if (b.st === 'nosteam' || b.st === 'nofuel' || b.st === 'nonet') { circle(b.x + .82, b.y + .18, .1); g.fillStyle = '#e0623c'; g.fill(); }
@@ -3482,7 +3493,7 @@ function setHTML(el, h) { if (el._h !== h) { el.innerHTML = h; el._h = h; } }
 
 const CAT_KEYS = ['Z', 'X', 'C', 'V', 'B', 'N', 'M'];
 const CATS = [
-  { id: 'log', n: 'Logistiikka', tools: ['belt', 'fastbelt', 'tunnel', 'splitter', 'smartsplit', 'inserter', 'chest', 'lamp'] },
+  { id: 'log', n: 'Logistiikka', tools: ['belt', 'fastbelt', 'tunnel', 'splitter', 'smartsplit', 'inserter', 'longins', 'chest', 'lamp'] },
   { id: 'prod', n: 'Tuotanto', tools: ['drill', 'drill2', 'smelter', 'smelter2', 'assembler', 'assembler2', 'lumber', 'saw'] },
   { id: 'energy', n: 'Energia ja öljy', tools: ['pipe', 'valve', 'upipe', 'boiler', 'tank', 'bigboiler', 'oilpipe', 'pumpjack', 'refinery', 'oilboiler'] },
   { id: 'move', n: 'Liikenne', tools: ['rail', 'signal', 'station', 'train', 'mast', 'zep'] },
@@ -3500,6 +3511,8 @@ const fillKeys = str => str.replace(/\{k:(\w+)\}/g, (_, t) => { const k = kh(t);
 function renderTools() {
   let h = '<div class="tabs" role="tablist">';
   for (const c of CATS) if (c.tools.some(unlocked)) h += `<button role="tab" class="${c.id === curCat ? 'on' : ''}" data-a="cat" data-v="${c.id}"><span class="tk">${c.key}</span>${c.n}</button>`;
+  { const tc = tool && BUILD[tool] ? CATS.find(c => c.tools.includes(tool)) : null;
+    if (tc && tc.id !== curCat) h += `<span class="curTool"><button class="ctGo" data-a="cat" data-v="${tc.id}" title="Näytä valitun työkalun luokka"><img src="${TURL[tool]}" alt="">${BUILD[tool].n}</button><button class="ctX" data-a="toolClear" aria-label="Poista valinta">&#10005;</button></span>`; }
   h += '</div><div class="row">';
   const cat = CATS.find(c => c.id === curCat) || CATS[0];
   visTools(cat).forEach((k, i) => {
@@ -3948,6 +3961,7 @@ function doAction(el) {
     case 'mute': muted = !muted; try { localStorage.setItem('hoyrytehdas-mute', muted ? '1' : '0'); } catch (e) {} el.textContent = muted ? 'Ääni pois' : 'Ääni päällä'; audio(); if (!muted) { sfx('craft'); startMusic(); } return;
     case 'slotSave': try { localStorage.setItem(slotKey(el.dataset.v), serialize()); localStorage.setItem(slotKey(el.dataset.v) + '-meta', JSON.stringify({ when: Date.now(), time: S.time, level: S.level, n: blist.length })); toast(`Tallennettu paikkaan ${el.dataset.v}`); } catch (err) { toast('Tallennus ei onnistunut: selaimen tallennustila voi olla täynnä'); } renderSlots(); return;
     case 'slotLoad': try { const str = localStorage.getItem(slotKey(el.dataset.v)); if (!str) return; restore(str); $('newg').hidden = true; closeInfo(); renderTools(); renderInv(); renderGoal(); save(); toast(`Ladattu paikasta ${el.dataset.v}`); } catch (err) { toast('Tallennusta ei voitu ladata'); } return;
+    case 'toolClear': selectTool(tool); return;
     case 'pin': { const k = el.dataset.v; S.pins = S.pins || []; const i = S.pins.indexOf(k);
       if (i >= 0) S.pins.splice(i, 1); else { if (S.pins.length >= 4) { toast('Enintään neljä kiinnitettyä tuotetta'); return; } S.pins.push(k); }
       const on = S.pins.includes(k); el.textContent = on ? 'Irrota' : 'Kiinnitä'; el.classList.toggle('on', on); renderPins(); return; }
@@ -4629,7 +4643,7 @@ function buildMiniBase() {
   }
   x.putImageData(im, 0, 0);
 }
-const MINI_COL = { valve: '#c9a14a', upipe: '#b8693a', smartsplit: '#9aa6b2', tank: '#d8eef2', inserter: '#c9a14a', saw: '#c49058', lumber: '#6a8a3a', oilpipe: '#3a3346', pumpjack: '#8a6ab0', refinery: '#6a5f80', oilboiler: '#8a8496', mast: '#ead08a', dock: '#ead08a', smelter2: '#c0563a', assembler2: '#e0935c', tunnel: '#c06d3c', signal: '#6dff7a', lamp: '#ffe9a0', belt: '#9c8250', fastbelt: '#c06d3c', pipe: '#b8693a', rail: '#c8ccd0', station: '#4f8a76', hq: '#ead08a', chest: '#8a5d33', boiler: '#e0935c', bigboiler: '#ead08a' };
+const MINI_COL = { longins: '#d07a3a', valve: '#c9a14a', upipe: '#b8693a', smartsplit: '#9aa6b2', tank: '#d8eef2', inserter: '#c9a14a', saw: '#c49058', lumber: '#6a8a3a', oilpipe: '#3a3346', pumpjack: '#8a6ab0', refinery: '#6a5f80', oilboiler: '#8a8496', mast: '#ead08a', dock: '#ead08a', smelter2: '#c0563a', assembler2: '#e0935c', tunnel: '#c06d3c', signal: '#6dff7a', lamp: '#ffe9a0', belt: '#9c8250', fastbelt: '#c06d3c', pipe: '#b8693a', rail: '#c8ccd0', station: '#4f8a76', hq: '#ead08a', chest: '#8a5d33', boiler: '#e0935c', bigboiler: '#ead08a' };
 function drawMini() {
   if (!miniBase && terrain) buildMiniBase();
   if ($('mini').hidden || !miniBase || !miniC.offsetWidth) return;
