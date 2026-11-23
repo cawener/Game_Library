@@ -486,6 +486,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <kbd>Rakentaminen</kbd><span>1) <b>Valitse paikka</b>: napauta karttaa. 2) <b>Valitse suunta</b>: napauta haluttua nuolta haamun ympärillä. Haamu tai ✓ rakentaa korostettuun suuntaan, ↻ kääntää ja ✕ peruu. Vetäminen liikuttaa näkymää rakennustilassakin</span>
       <kbd>Kuljettimet ja putket</kbd><span>Kuljettimet, putket, öljyputket ja raiteet rakennetaan vetämällä sormella. Suunta seuraa vetoa</span>
       <kbd>Pura</kbd><span>Valitse Pura-kortti ja napauta tai vedä rakennusten yli. Materiaalit palautuvat varastoon</span>
+      <kbd>Pura alue</kbd><span>Pura-työkalun ohjeruudussa voit valita Viiva (sormen reitti) tai Alue (vedä suorakulmio, kaikki sen sisällä puretaan)</span>
       <kbd>Käännä</kbd><span>Kortti kääntää valittua rakennusta ennen rakentamista tai avattua rakennusta paikallaan</span>
       <kbd>Kopioi ja Kaavat</kbd><span>Kopioi-kortilla vedä suorakulmio alueen yli. Kaavat-kortista tallennat kaavan nimellä ja liität sen uudelleen napauttamalla karttaa</span>
       <kbd>Kumoa</kbd><span>Peruu viimeisimmän rakentamisen tai purun. Uusi napautus peruu sitä edeltävän toiminnon</span>
@@ -628,7 +629,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.50.6';
+const VERSION = '0.50.7';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -2709,13 +2710,16 @@ function railArms(b) {
 }
 function railBase(b) {
   const arms = railArms(b);
-  g.fillStyle = '#4a443c'; for (const d of arms) { g.save(); g.rotate(d * Math.PI / 2); g.fillRect(-.42, -.5, .84, .56); g.restore(); }
-  g.fillStyle = 'rgba(150,140,120,.35)'; for (let k = 0; k < 10; k++) { const hx = hash(b.x * 7 + k, b.y), hy = hash(b.y * 5 + k, b.x); g.fillRect(-.4 + hx * .8, -.4 + hy * .8, .05, .05); }
-  g.fillStyle = '#7a5a38';
-  for (const d of arms) { g.save(); g.rotate(d * Math.PI / 2); for (const y of [-.44, -.2]) g.fillRect(-.36, y, .72, .12); g.restore(); }
-  g.fillRect(-.36, -.06, .72, .12);
-  g.fillStyle = '#b8c0c8';
-  for (const d of arms) { g.save(); g.rotate(d * Math.PI / 2); g.fillRect(-.24, -.5, .06, .56); g.fillRect(.18, -.5, .06, .56); g.restore(); }
+  for (const d of arms) { g.save(); g.rotate(d * Math.PI / 2); const bg = g.createLinearGradient(-.42, 0, .42, 0); bg.addColorStop(0, '#3a352f'); bg.addColorStop(.5, '#575047'); bg.addColorStop(1, '#3a352f'); g.fillStyle = bg; g.fillRect(-.42, -.5, .84, .56); g.restore(); }
+  for (let k = 0; k < 18; k++) { const hx = hash(b.x * 7 + k, b.y), hy = hash(b.y * 5 + k, b.x); g.fillStyle = k % 3 ? 'rgba(160,150,130,.35)' : 'rgba(20,16,12,.4)'; g.fillRect(-.4 + hx * .8, -.4 + hy * .8, .045, .045); } // gravel
+  const sleeper = y => { g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(-.35, y + .03, .72, .12); g.fillStyle = '#7a5a38'; g.fillRect(-.36, y, .72, .12);
+    g.fillStyle = 'rgba(40,24,10,.45)'; g.fillRect(-.36, y + .09, .72, .03); g.fillStyle = 'rgba(255,220,170,.12)'; g.fillRect(-.36, y, .72, .02); };
+  for (const d of arms) { g.save(); g.rotate(d * Math.PI / 2); for (const y of [-.44, -.2]) sleeper(y); g.restore(); }
+  sleeper(-.06);
+  for (const d of arms) { g.save(); g.rotate(d * Math.PI / 2);
+    for (const x of [-.24, .18]) { g.fillStyle = 'rgba(0,0,0,.4)'; g.fillRect(x + .025, -.5, .05, .56); g.fillStyle = '#7d858d'; g.fillRect(x, -.5, .06, .56); g.fillStyle = '#dfe5ea'; g.fillRect(x + .012, -.5, .018, .56);
+      g.fillStyle = '#2e3135'; for (const y of [-.42, -.18]) g.fillRect(x - .02, y, .1, .06); }
+    g.restore(); }
 }
 function trailPush(tr) {
   const tl = tr._tl || (tr._tl = []), last = tl[tl.length - 1];
@@ -3961,6 +3965,7 @@ function doAction(el) {
     case 'mute': muted = !muted; try { localStorage.setItem('hoyrytehdas-mute', muted ? '1' : '0'); } catch (e) {} el.textContent = muted ? 'Ääni pois' : 'Ääni päällä'; audio(); if (!muted) { sfx('craft'); startMusic(); } return;
     case 'slotSave': try { localStorage.setItem(slotKey(el.dataset.v), serialize()); localStorage.setItem(slotKey(el.dataset.v) + '-meta', JSON.stringify({ when: Date.now(), time: S.time, level: S.level, n: blist.length })); toast(`Tallennettu paikkaan ${el.dataset.v}`); } catch (err) { toast('Tallennus ei onnistunut: selaimen tallennustila voi olla täynnä'); } renderSlots(); return;
     case 'slotLoad': try { const str = localStorage.getItem(slotKey(el.dataset.v)); if (!str) return; restore(str); $('newg').hidden = true; closeInfo(); renderTools(); renderInv(); renderGoal(); save(); toast(`Ladattu paikasta ${el.dataset.v}`); } catch (err) { toast('Tallennusta ei voitu ladata'); } return;
+    case 'rmMode': PREF.rmArea = el.dataset.v === '1'; savePrefs(); renderBHint(); return;
     case 'toolClear': selectTool(tool); return;
     case 'pin': { const k = el.dataset.v; S.pins = S.pins || []; const i = S.pins.indexOf(k);
       if (i >= 0) S.pins.splice(i, 1); else { if (S.pins.length >= 4) { toast('Enintään neljä kiinnitettyä tuotetta'); return; } S.pins.push(k); }
@@ -4284,6 +4289,10 @@ function touchTap(cx, cy) {
 }
 function renderBHint() {
   const el = $('bhint');
+  if (lastPT === 'touch' && tool === 'remove') { // phones: choose whether a drag removes along the finger or a whole rectangle
+    const h = `<div><b>Pura</b><small>${PREF.rmArea ? 'Vedä suorakulmio: kaikki sen sisällä puretaan' : 'Napauta tai vedä rakennusten yli'}</small></div><div class="cmode" role="group" aria-label="Purkutapa"><button class="sbtn${PREF.rmArea ? '' : ' on'}" data-a="rmMode" data-v="0">Viiva</button><button class="sbtn${PREF.rmArea ? ' on' : ''}" data-a="rmMode" data-v="1">Alue</button></div><button class="tbtn" data-a="tpCancel" aria-label="Lopeta purku">&#x2715;</button>`;
+    if (el._h !== h) { el.innerHTML = h; el._h = h; } el.hidden = false; return;
+  }
   if (!(lastPT === 'touch' && touchBuildTool())) { tp = null; if (!el.hidden) el.hidden = true; return; }
   const nm = BUILD[tool] ? BUILD[tool].n : '', nd = NODIR.has(tool);
   const h = !tp ? `<div><b>Valitse paikka</b><small>${nm}: napauta karttaa · vedä siirtääksesi näkymää</small></div><button class="tbtn" data-a="tpCancel" aria-label="Peru">&#x2715;</button>`
@@ -4388,7 +4397,7 @@ cv.addEventListener('pointerdown', e => {
   lastPT = e.pointerType;
   if (e.button === 1 || (e.button === 0 && !tool)) drag.mode = 'pan';
   else if (e.button === 0 && e.pointerType === 'touch' && touchBuildTool()) { drag.mode = 'pan'; drag.tb = true; }
-  else if ((e.button === 2 || tool === 'remove') && e.shiftKey) { drag.mode = 'rectRemove'; drag.a = t; drag.b = t; }
+  else if ((e.button === 2 || tool === 'remove') && (e.shiftKey || (tool === 'remove' && e.pointerType === 'touch' && PREF.rmArea))) { drag.mode = 'rectRemove'; drag.a = t; drag.b = t; }
   else if (e.button === 2 || tool === 'remove') { drag.mode = 'remove'; removeAt(t.x, t.y); }
   else if (tool === 'copy') { drag.mode = 'rect'; drag.a = t; drag.b = t; }
   else if (tool === 'upgrade') { drag.mode = 'rectUp'; drag.a = t; drag.b = t; }
