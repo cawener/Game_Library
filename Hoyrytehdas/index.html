@@ -587,6 +587,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
     <div class="set">
       <label for="setVol">Äänitehosteet</label><input type="range" id="setVol" min="0" max="1" step="0.05">
       <label for="setMusic">Musiikki</label><span class="row2"><input type="checkbox" id="setMusic"><input type="range" id="setMusicVol" min="0" max="1" step="0.05" aria-label="Musiikin voimakkuus"></span>
+      <label for="setAmb">Tehtaan äänet</label><span class="row2"><input type="checkbox" id="setAmb"><span class="rate">Höyryn suhina ja koneiden kolina</span></span>
       <label for="setNight">Vuorokausirytmi</label><span class="row2"><input type="checkbox" id="setNight"><span class="rate">Yöt ja valaistus</span></span>
       <label for="setQual">Grafiikan laatu</label><select id="setQual"><option value="">Automaattinen</option><option value="high">Tarkka</option><option value="mid">Tasapainoinen</option><option value="low">Säästö (kevyin)</option></select>
       <label for="setAuto">Automaattitallennus</label><select id="setAuto"><option value="15">15 s välein</option><option value="30">30 s välein</option><option value="60">1 min välein</option><option value="0">Pois</option></select>
@@ -616,7 +617,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.50.2';
+const VERSION = '0.50.3';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -2739,18 +2740,25 @@ function drawTrain(tr, t, alpha) {
 }
 function boilerDraw(b, t, big, oil) {
   const R = big ? .47 : .42;
+  if (!big) { rr(-.46, -.46, .92, .92, .08); g.fillStyle = P.brickD; g.fill(); g.lineWidth = .02; g.strokeStyle = 'rgba(0,0,0,.45)'; g.stroke();
+    g.strokeStyle = 'rgba(20,8,4,.5)'; g.lineWidth = .015; g.beginPath(); for (const y of [-.23, 0, .23]) { g.moveTo(-.46, y); g.lineTo(.46, y); } g.stroke(); }
   const gr = g.createRadialGradient(-.12, -.12, .05, 0, 0, R);
   gr.addColorStop(0, oil ? '#8a8496' : big ? P.brassL : P.copperL); gr.addColorStop(1, oil ? '#2a2433' : big ? P.brassD : P.copperD);
   circle(0, 0, R); g.fillStyle = gr; g.fill(); g.lineWidth = .04; g.strokeStyle = P.soot; g.stroke();
-  g.fillStyle = P.brassL; for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; circle(Math.cos(a) * (R - .055), Math.sin(a) * (R - .055), .022); g.fill(); }
+  for (const rr2 of [R - .055, R * .62]) { circle(0, 0, rr2); g.lineWidth = .028; g.strokeStyle = 'rgba(90,64,20,.75)'; g.stroke(); circle(-.006, -.008, rr2); g.lineWidth = .01; g.strokeStyle = 'rgba(255,236,180,.35)'; g.stroke(); } // brass hoops
+  g.fillStyle = P.brassL; for (let i = 0; i < 12; i++) { const a = i * Math.PI / 6; circle(Math.cos(a) * (R - .055), Math.sin(a) * (R - .055), .02); g.fill(); }
   const on = b.burn > 0;
-  if (on) { circle(0, .2, .1); g.fillStyle = `rgba(255,${130 + 50 * Math.sin(t * 11 + b.y)},40,.85)`; g.fill(); }
+  // arched firebox door at the bottom; glows when burning
+  g.beginPath(); g.moveTo(-.11, .33); g.lineTo(-.11, .2); g.arc(0, .2, .11, Math.PI, 0); g.lineTo(.11, .33); g.closePath();
+  g.fillStyle = on ? `rgba(255,${130 + 50 * Math.sin(t * 11 + b.y)},40,.9)` : P.soot; g.fill(); g.lineWidth = .03; g.strokeStyle = P.ironD; g.stroke();
+  if (on) { g.strokeStyle = 'rgba(120,40,10,.6)'; g.lineWidth = .015; g.beginPath(); for (const x of [-.05, 0, .05]) { g.moveTo(x, .2); g.lineTo(x, .32); } g.stroke(); }
+  circle(-.2, -.22, .045); g.fillStyle = P.brass; g.fill(); g.lineWidth = .015; g.strokeStyle = P.brassD; g.stroke(); circle(-.21, -.23, .018); g.fillStyle = P.brassL; g.fill(); // safety valve
   // gauge
   circle(0, -.04, .15); g.fillStyle = P.cream; g.fill(); g.strokeStyle = P.brassD; g.lineWidth = .03; g.stroke();
   const na = -2.4 + (b.l || 0) * 3.4 + (on ? Math.sin(t * 13 + b.x) * .05 : 0);
   g.strokeStyle = '#a8342a'; g.lineWidth = .025; g.beginPath(); g.moveTo(0, -.04); g.lineTo(Math.cos(na - Math.PI / 2 + Math.PI / 2) * .12, -.04 + Math.sin(na) * .12); g.stroke();
   const chims = big ? [[-.26, -.26], [.26, -.26]] : [[.24, -.24]];
-  for (const [x, y] of chims) { circle(x, y, .09); g.fillStyle = P.ironD; g.fill(); circle(x, y, .055); g.fillStyle = P.soot; g.fill(); }
+  for (const [x, y] of chims) { circle(x + .015, y + .02, .1); g.fillStyle = 'rgba(0,0,0,.4)'; g.fill(); circle(x, y, .1); g.fillStyle = P.ironD; g.fill(); g.lineWidth = .02; g.strokeStyle = P.ironL; g.stroke(); circle(x, y, .06); g.fillStyle = on ? '#2a1208' : P.soot; g.fill(); if (on) { circle(x, y, .035); g.fillStyle = 'rgba(255,120,40,.35)'; g.fill(); } }
 }
 
 // ---- material finish: one shared light/shadow + grain overlay, laid over each building body (light always from the top-left)
@@ -4627,7 +4635,7 @@ miniC.addEventListener('pointerup', () => { miniC._drag = false; });
 
 let actx = null, muted = false, lastSfx = {};
 try { muted = localStorage.getItem('hoyrytehdas-mute') === '1'; } catch (e) {}
-const PREF = { vol: .8, music: true, musicVol: .5, autosave: 30 };
+const PREF = { vol: .8, music: true, musicVol: .5, autosave: 30, amb: true };
 try { Object.assign(PREF, JSON.parse(localStorage.getItem('hoyrytehdas-prefs') || '{}')); } catch (e) {}
 function applyQuality() { const q = PREF.quality || (matchMedia('(pointer: coarse)').matches ? 'mid' : 'high'); QUAL_CAP = QUALS[q] || 2; resize(); }
 applyQuality();
@@ -4640,6 +4648,30 @@ function audio() {
   masterG.gain.value = muted ? 0 : PREF.vol;
   musicG.gain.value = PREF.music ? PREF.musicVol * .5 : 0;
   return actx;
+}
+// ---- ambient factory bed: filtered noise "steam hiss" + rumble, level follows working machines on screen; plus sparse clanks
+let ambG = null, ambLvl = 0;
+function ambStart() {
+  if (ambG || !actx) return;
+  const len = actx.sampleRate * 2, buf = actx.createBuffer(1, len, actx.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0, last = 0; i < len; i++) { const w = Math.random() * 2 - 1; last = last * .97 + w * .03; d[i] = w * .35 + last * 4; }
+  const src = actx.createBufferSource(); src.buffer = buf; src.loop = true;
+  const bp = actx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 520; bp.Q.value = .6;
+  const lp = actx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1400;
+  ambG = actx.createGain(); ambG.gain.value = 0;
+  src.connect(bp); bp.connect(lp); lp.connect(ambG); ambG.connect(masterG); src.start();
+}
+function ambTick(nWork) {
+  if (!actx || !masterG) return;
+  if (!ambG) ambStart();
+  const want = PREF.amb && !muted && !paused && speed > 0 ? Math.min(1, nWork / 25) * .07 : 0;
+  ambLvl += (want - ambLvl) * .3; ambG.gain.setTargetAtTime(ambLvl, actx.currentTime, .3);
+  if (want > 0 && Math.random() < Math.min(.6, nWork / 40)) { // a distant clank / hammer
+    const t0 = actx.currentTime + Math.random() * .2, o = actx.createOscillator(), gg = actx.createGain(), f = actx.createBiquadFilter();
+    o.type = 'square'; o.frequency.value = 160 + Math.random() * 260; f.type = 'bandpass'; f.frequency.value = 900 + Math.random() * 900; f.Q.value = 4;
+    gg.gain.setValueAtTime(0.0001, t0); gg.gain.exponentialRampToValueAtTime(.025 * (.4 + Math.random() * .6), t0 + .005); gg.gain.exponentialRampToValueAtTime(0.0001, t0 + .09);
+    o.connect(f); f.connect(gg); gg.connect(masterG); o.start(t0); o.stop(t0 + .12);
+  }
 }
 // ---- procedural clockwork music: pads, bass, music box and a soft escapement tick
 const CHORDS = [[50, 57, 62, 65], [46, 53, 58, 62], [41, 53, 57, 60], [48, 55, 60, 64]];
@@ -4710,9 +4742,10 @@ function devTry() {
 function syncSettings() {
   renderSlots(); devAsk = false; renderDev();
   $('setVol').value = PREF.vol; $('setMusic').checked = PREF.music; $('setMusicVol').value = PREF.musicVol;
-  $('setNight').checked = !S.noNight; $('setAuto').value = String(PREF.autosave); $('setQual').value = PREF.quality || '';
+  $('setNight').checked = !S.noNight; $('setAmb').checked = PREF.amb !== false; $('setAuto').value = String(PREF.autosave); $('setQual').value = PREF.quality || '';
 }
-for (const id of ['setVol', 'setMusic', 'setMusicVol', 'setNight', 'setAuto', 'setQual']) $(id).addEventListener('input', () => {
+for (const id of ['setVol', 'setMusic', 'setMusicVol', 'setNight', 'setAuto', 'setQual', 'setAmb']) $(id).addEventListener('input', () => {
+  PREF.amb = $('setAmb').checked;
   const nq = $('setQual').value || null; if (nq !== (PREF.quality || null)) { PREF.quality = nq; applyQuality(); }
   PREF.vol = +$('setVol').value; PREF.music = $('setMusic').checked; PREF.musicVol = +$('setMusicVol').value; PREF.autosave = +$('setAuto').value;
   S.noNight = !$('setNight').checked; savePrefs(); audio(); if (PREF.music) startMusic();
@@ -4813,6 +4846,7 @@ function loop(now) {
     renderInv(); renderGoal(); renderInfo(); renderTools(); renderAlerts();
     if ((achT = (achT || 0) + 1) % 4 === 0) checkAch();
     tutorialTick(); renderMapTip();
+    { const hw = CW / 2 / cam.z + 1, hh = CH / 2 / cam.z + 1; let nw = 0; for (const b of blist) if (b.st === 'work' && Math.abs(b.x - cam.x) < hw && Math.abs(b.y - cam.y) < hh) nw++; ambTick(nw); }
     if ((miniT = (miniT || 0) + 1) % 2 === 0) drawMini();
     if (!$('stats').hidden && (statT = (statT || 0) + 1) % 4 === 0) renderStats();
   }
