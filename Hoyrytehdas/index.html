@@ -304,7 +304,8 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 #steamPop { position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 20; flex-direction: column; gap: 3px; min-width: 170px; padding: 8px 12px; background: var(--panel); border: 1px solid var(--brass-dark); border-radius: 6px; box-shadow: 0 10px 24px rgba(0,0,0,.6); font-size: 14px; }
 #steamPop div { display: flex; justify-content: space-between; gap: 14px; }
 #steamPop .lbl { opacity: .75; }
-#menuBtn, #mtabs, #tutP { display: none; }
+#menuBtn, #mtabs, #tutP, #toolsTog { display: none; }
+#tools { transition: transform .22s ease; }
 @media (max-width: 760px), (max-height: 500px) {
   /* phone (narrow or short screens, e.g. phones in landscape): compact one-row top bar, menu buttons in a drop-down, side panels as pull-down drawers behind tabs */
   #top { gap: 8px; flex-wrap: nowrap; padding-top: calc(env(safe-area-inset-top, 0px) + 4px); padding-bottom: 4px; }
@@ -343,6 +344,11 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
   #toast { top: calc(var(--topH, 52px) + 44px); width: calc(100% - 24px); }
   #toast div { font-size: 13px; padding: 6px 10px; text-align: center; }
   #tools { padding: 4px 6px 6px; max-width: calc(100% - 12px); }
+  /* collapsible toolbar: a small tab sits on the toolbar's top edge; when hidden only the tab stays */
+  #toolsTog { display: block; position: fixed; z-index: 6; left: 50%; transform: translateX(-50%); bottom: calc(var(--toolsB, 120px) - 9px); padding: 2px 14px 3px; font-size: 11px; letter-spacing: .06em; color: var(--brass-light);
+    background: linear-gradient(#3a2c20, #221913); border: 1px solid var(--brass-dark); border-bottom: none; border-radius: 6px 6px 0 0; box-shadow: 0 -3px 8px rgba(0,0,0,.35); white-space: nowrap; max-width: 70vw; overflow: hidden; text-overflow: ellipsis; }
+  body.toolsHidden #tools { transform: translate(-50%, calc(100% + 24px)); pointer-events: none; }
+  body.toolsHidden #toolsTog { bottom: env(safe-area-inset-bottom, 0px); border-bottom: 1px solid var(--brass-dark); border-radius: 6px 6px 0 0; padding: 5px 16px 6px; font-size: 12px; }
   #tools .tabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
   #tools .tabs button { white-space: nowrap; font-size: 10px; padding: 3px 7px 5px; letter-spacing: .06em; }
   .tool { width: 56px; height: 66px; padding-top: 13px; font-size: 9.5px; }
@@ -431,6 +437,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 
 <div id="info" class="panel" hidden></div>
 <nav id="tools" class="panel" aria-label="Rakennukset"></nav>
+<button id="toolsTog" data-a="toolsTog" aria-expanded="true" aria-controls="tools">&#9662; Piilota</button>
 <div id="tip" hidden></div>
 <div id="mtip" hidden></div>
 <div id="ovl" hidden></div>
@@ -472,6 +479,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <kbd>Kartta</kbd><span>Napauta tai vedä minikarttaa siirtyäksesi</span>
       <kbd>☰-valikko</kbd><span>Loki, ääni päälle tai pois, Tuotekirja ja tuotantolaskuri, Tilastot, Ohjeet, Tallenna ja päävalikko</span>
       <kbd>Grafiikan laatu</kbd><span>Valikko → Asetukset. Tasapainoinen on puhelimen oletus. Säästö kevyin, jos peli nykii tai akku hupenee</span>
+      <kbd>Alapalkin kahva</kbd><span>Palkin yläreunan välilehti piilottaa alapalkin, jolloin kartalle jää enemmän tilaa (hyödyllinen vaakatasossa). Valittu työkalu pysyy käytössä ja näkyy kahvassa</span>
       <kbd>Tauko ja nopeus</kbd><span>Yläpalkin napit: Tauko, 1×, 2× ja 4×</span>
     </div>
     <div class="keys" id="helpPc">
@@ -600,7 +608,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.39';
+const VERSION = '0.40';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -1923,7 +1931,23 @@ const cv = document.getElementById('cv');
 let ctx = cv.getContext('2d'), g = ctx;
 let dpr = 1, CW = 0, CH = 0, QUAL_CAP = 2;
 const COMPACT = matchMedia('(max-width: 760px), (max-height: 500px)'), isCompact = () => COMPACT.matches;
-function updToolsB() { const tl = document.getElementById('tools'); if (tl) document.documentElement.style.setProperty('--toolsB', (innerHeight - tl.getBoundingClientRect().top + 8) + 'px'); }
+function updToolsB() {
+  const tl = document.getElementById('tools'); if (!tl) return;
+  const hid = document.body.classList.contains('toolsHidden') && COMPACT.matches;
+  document.documentElement.style.setProperty('--toolsB', (hid ? 36 : innerHeight - tl.getBoundingClientRect().top + 8) + 'px');
+}
+function setToolsHidden(h) {
+  document.body.classList.toggle('toolsHidden', !!h); PREF.toolsHidden = !!h; savePrefs();
+  const tb = document.getElementById('toolsTog'); tb.setAttribute('aria-expanded', String(!h)); renderToolsTog();
+  updToolsB(); setTimeout(updToolsB, 260);
+}
+function renderToolsTog() {
+  const tb = document.getElementById('toolsTog'); if (!tb) return;
+  const hid = document.body.classList.contains('toolsHidden');
+  const nm = tool ? (BUILD[tool] ? BUILD[tool].n : { remove: 'Pura', copy: 'Kopioi', paste: 'Liitä', upgrade: 'Päivitä' }[tool] || '') : '';
+  const h = hid ? `&#9652; Rakenna${nm ? ' · ' + nm : ''}` : '&#9662; Piilota';
+  if (tb._h !== h) { tb.innerHTML = h; tb._h = h; }
+}
 const QUALS = { high: 2, mid: 1.5, low: 1 };
 function resize() {
   const tb = document.getElementById('top'); if (tb) document.documentElement.style.setProperty('--topH', tb.offsetHeight + 'px');
@@ -3375,7 +3399,7 @@ function renderTools() {
   h += `<button class="tool" data-a="rotTool" aria-label="Käännä"><span class="k">R</span><span class="big-ch">&#x21bb;</span><span class="nm">Käännä</span></button>`;
   h += `<button class="tool" data-a="undoBtn" aria-label="Kumoa"><span class="k l">Ctrl+Z</span><span class="big-ch">&#x21b6;</span><span class="nm">Kumoa</span></button>`;
   h += `<button class="tool${overlay ? ' on' : ''}" data-a="ovlBtn" aria-label="Tilanäkymä"><span class="k">T</span><span class="big-ch">&#x25d0;</span><span class="nm">${['Näkymä', 'Tila', 'Höyry', 'Malmit'][overlay]}</span></button>`;
-  setHTML($('tools'), h + '</div>');
+  setHTML($('tools'), h + '</div>'); renderToolsTog();
 }
 function costHTML(cost) {
   return '<div class="cost">' + Object.keys(cost).map(k => `<span class="${(S.inv[k] || 0) < cost[k] ? 'lack' : ''}">${icon(k)}${cost[k]} ${ITEMS[k].n}</span>`).join('') + '</div>';
@@ -3785,6 +3809,7 @@ function doAction(el) {
     case 'slotLoad': try { const str = localStorage.getItem(slotKey(el.dataset.v)); if (!str) return; restore(str); $('newg').hidden = true; closeInfo(); renderTools(); renderInv(); renderGoal(); save(); toast(`Ladattu paikasta ${el.dataset.v}`); } catch (err) { toast('Tallennusta ei voitu ladata'); } return;
     case 'tutAgain': S.tut = 0; $('newg').hidden = true; renderGoal(); toast('Opastus alkaa alusta'); return;
     case 'alert': jumpAlert(); return;
+    case 'toolsTog': setToolsHidden(!document.body.classList.contains('toolsHidden')); return;
     case 'tpOk': if (tp) touchPlace(rot); return;
     case 'tpCancel': if (tp) { tp = null; renderBHint(); } else selectTool(null); return;
     case 'rotTool': rot = (rot + 1) % 4; if (selected && selected.t !== 'hq' && selected.t !== 'train') { selected.d = (selected.d + 1) % 4; } return;
@@ -4484,6 +4509,7 @@ const PREF = { vol: .8, music: true, musicVol: .5, autosave: 30 };
 try { Object.assign(PREF, JSON.parse(localStorage.getItem('hoyrytehdas-prefs') || '{}')); } catch (e) {}
 function applyQuality() { const q = PREF.quality || (matchMedia('(pointer: coarse)').matches ? 'mid' : 'high'); QUAL_CAP = QUALS[q] || 2; resize(); }
 applyQuality();
+if (PREF.toolsHidden) document.body.classList.add('toolsHidden');
 function savePrefs() { try { localStorage.setItem('hoyrytehdas-prefs', JSON.stringify(PREF)); } catch (e) {} }
 let masterG = null, musicG = null;
 function audio() {
