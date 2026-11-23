@@ -321,6 +321,11 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 #topBtns { display: contents; }
 .menuVer, #steamPop { display: none; }
 #steamPop { position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 20; flex-direction: column; gap: 3px; min-width: 170px; padding: 8px 12px; background: var(--panel); border: 1px solid var(--brass-dark); border-radius: 6px; box-shadow: 0 10px 24px rgba(0,0,0,.6); font-size: 14px; }
+#alertPop { position: absolute; top: calc(100% + 8px); right: max(10px, env(safe-area-inset-right, 0px)); z-index: 25; width: min(340px, calc(100vw - 20px)); max-height: 60vh; overflow: auto; padding: 8px 10px; background: var(--panel); border: 1px solid var(--bad); border-radius: 6px; box-shadow: 0 10px 24px rgba(0,0,0,.6); font-size: 13px; }
+#top:has(#alertPop:not([hidden])) { z-index: 30; }
+#alertPop .ag { border-top: 1px solid #3a2e22; padding: 6px 0; } #alertPop .ag:first-of-type { border-top: none; }
+#alertPop .agh { display: flex; justify-content: space-between; align-items: center; gap: 8px; } #alertPop .agh b { color: #f3b199; }
+#alertPop .hint2 { color: var(--muted); font-size: 12px; margin-top: 2px; }
 #steamPop div { display: flex; justify-content: space-between; gap: 14px; }
 #steamPop .lbl { opacity: .75; }
 #menuBtn, #mtabs, #tutP, #toolsTog { display: none; }
@@ -412,6 +417,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
   <div class="steam"><span class="lbl">Paine</span><b id="presTxt">–</b></div>
   <div class="spacer"></div>
   <button class="tbtn" id="alertBtn" data-a="alert" hidden>Hälytykset 0</button>
+  <div id="alertPop" hidden></div>
   <div class="seg" role="group" aria-label="Pelinopeus">
     <button data-a="spd" data-v="0" title="Tauko (välilyönti)" aria-label="Tauko"><span class="lblFull">Tauko</span><span class="lblIcon" aria-hidden="true">&#10073;&#10073;</span></button><button data-a="spd" data-v="1" class="on">1×</button><button data-a="spd" data-v="2">2×</button><button data-a="spd" data-v="4">4×</button>
   </div>
@@ -638,7 +644,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.50.20';
+const VERSION = '0.50.21';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -4202,7 +4208,8 @@ function doAction(el) {
     case 'devOff': S.dev = false; renderDev(); renderGoal(); renderInv(); toast('Dev-tila pois'); save(); return;
     case 'devLv': { const nl = Math.max(0, Math.min(PATENTS.length, S.level + +el.dataset.v)); if (nl === S.level) return; S.level = nl; renderTools(); renderGoal(); renderInv(); toast(`Dev-tila: patenttitaso ${S.level}${S.level ? ' (' + PATENTS[S.level - 1].n + ')' : ''}`); return; }
     case 'tutAgain': S.tut = 0; $('newg').hidden = true; renderGoal(); toast('Opastus alkaa alusta'); return;
-    case 'alert': jumpAlert(); return;
+    case 'alert': { const el = $('alertPop'); el.hidden = !el.hidden; if (!el.hidden) { closeTopMenu(); closeDrawers(); renderAlertPop(); } return; }
+    case 'alertGo': alertGo(el.dataset.v); return;
     case 'toolsTog': setToolsHidden(!document.body.classList.contains('toolsHidden')); return;
     case 'tpOk': if (tp) touchPlace(rot); return;
     case 'tpCancel': if (tp) { tp = null; renderBHint(); } else selectTool(null); return;
@@ -4608,7 +4615,7 @@ function clickTile(t, mods) {
 
 cv.addEventListener('contextmenu', e => e.preventDefault());
 cv.addEventListener('pointerdown', e => {
-  commitGrp(); closeTopMenu(); if (isCompact()) closeDrawers();
+  commitGrp(); closeTopMenu(); $('alertPop').hidden = true; if (isCompact()) closeDrawers();
   cv.setPointerCapture(e.pointerId);
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   $('tip').hidden = true;
@@ -4862,7 +4869,24 @@ function renderAlerts() {
   if (n > lastAlertN && performance.now() - (renderAlerts.t || 0) > 10000) { sfx('alert'); renderAlerts.t = performance.now(); }
   lastAlertN = n;
   el.hidden = n === 0; const ah = `<span class="lblFull">Hälytykset </span><span class="lblIcon" aria-hidden="true">&#9888; </span>${n}`; if (el._h !== ah) { el.innerHTML = ah; el._h = ah; } el.setAttribute('aria-label', `Hälytykset ${n}`);
-  el.title = 'Näytä seuraava kone, jolta puuttuu höyry tai polttoaine, tai veturi ilman reittiä';
+  el.title = 'Näytä hälytykset ryhmiteltyinä';
+}
+const ALERT_HINT = { nosteam: 'Verkossa on kattila, mutta höyry ei riitä: lisää kattiloita, polttoainetta tai pysäytä koneita.', nonet: 'Kone ei ole yhteydessä kattilaan: vedä höyryputki.', nofuel: 'Kattila tarvitsee hiiltä tai puuta: tuo sitä kuljettimella tai lisää käsin.',
+  nopath: 'Veturilla ei ole reittiä seuraavalle asemalle: tarkista raiteet ja aikataulu.', nooil: 'Raakaöljy ei riitä: rakenna pumppu öljylähteelle ja yhdistä öljyputkella.', depleted: 'Esiintymä on ehtynyt: siirrä pora uuteen esiintymään.' };
+const alertGi = {};
+function renderAlertPop() {
+  const el = $('alertPop'); if (el.hidden) return;
+  const groups = {}; for (const b of problems()) (groups[b.st] = groups[b.st] || []).push(b);
+  const ks = Object.keys(groups);
+  if (!ks.length) { el.hidden = true; return; }
+  const h = '<div class="pat-no">Hälytykset</div>' + ks.map(k => { const list = groups[k], names = {}; for (const b of list) { const n = b.t === 'train' ? 'Höyryveturi' : BUILD[b.t].n; names[n] = (names[n] || 0) + 1; }
+    return `<div class="ag"><div class="agh"><b>${STATUS[k][0]}</b><button class="sbtn" data-a="alertGo" data-v="${k}">Näytä (${list.length})</button></div><div class="rate">${Object.keys(names).map(n => `${names[n]} × ${n.toLowerCase()}`).join(', ')}</div><div class="hint2">${ALERT_HINT[k] || ''}</div></div>`; }).join('');
+  setHTML(el, h);
+}
+function alertGo(k) {
+  const list = problems().filter(b => b.st === k); if (!list.length) return;
+  const b = list[(alertGi[k] = ((alertGi[k] || 0) + 1)) % list.length];
+  cam.x = (b.fx ?? b.x + .5); cam.y = (b.fy ?? b.y + .5); openInfo(b); if (isCompact()) $('alertPop').hidden = true;
 }
 function jumpAlert() {
   const list = problems(); if (!list.length) return;
@@ -5140,7 +5164,7 @@ function loop(now) {
     pr.style.color = sat < 0.999 && demand > 0 ? (sat < 0.5 ? 'var(--bad)' : 'var(--warn)') : 'var(--ok)';
     if ($('top').classList.contains('steamOpen')) { $('steamTxt2').textContent = $('steamTxt').textContent; const p2 = $('presTxt2'); p2.textContent = pr.textContent; p2.style.color = pr.style.color; }
     const m = Math.floor(S.time / 60); $('clock').textContent = $('clock2').textContent = `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')} · ${dayLabel()}`;
-    renderInv(); renderGoal(); renderInfo(); renderTools(); renderAlerts(); renderPins(); renderMarks();
+    renderInv(); renderGoal(); renderInfo(); renderTools(); renderAlerts(); renderPins(); renderMarks(); renderAlertPop();
     if ((achT = (achT || 0) + 1) % 4 === 0) checkAch();
     tutorialTick(); renderMapTip();
     { const hw = CW / 2 / cam.z + 1, hh = CH / 2 / cam.z + 1; let nw = 0; for (const b of blist) if (b.st === 'work' && Math.abs(b.x - cam.x) < hw && Math.abs(b.y - cam.y) < hh) nw++; ambTick(nw); }
