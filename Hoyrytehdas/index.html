@@ -576,7 +576,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.31';
+const VERSION = '0.32';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -1649,6 +1649,7 @@ const REWARDS = [
 ];
 function events() {
   if (S.level < 1) return;
+  expTick();
   if (S.nextEv == null) S.nextEv = S.time + 200;
   if (S.contract && S.contract.end <= S.time && S.contract.got < S.contract.n) {
     toast(`Tilaus raukesi: ${ITEMS[S.contract.i].n} ${S.contract.got} / ${S.contract.n}`); S.contract = null;
@@ -1671,6 +1672,68 @@ function events() {
     S.contract = { i: c.i, n: Math.round(c.n * (1 + S.level * .2)), got: 0, end: S.time + 360, rew, mode: 'half' };
     toast(`Uusi tilaus: ${S.contract.n} × ${ITEMS[c.i].n} pääkonttoriin 6 minuutissa. Puolet toimituksista ohjautuu tilaukselle, loput varastoon. Jaon voi muuttaa patenttipaneelista.`); sfx('craft');
   }
+}
+/* ---- airship expeditions (after Aurora) */
+const EXPED = [
+  { id: 'north', n: 'Pohjoiset kaivokset', d: 'Geologit kartoittavat laakson reunat. Löytää kaksi uutta malmiesiintymää rakennusalueelle.', dur: 360, cost: { hiili: 200, voiteluoljy: 20 }, rew: { rautalevy: 300, kuparilevy: 200 }, ore: 2, fame: 1 },
+  { id: 'coast', n: 'Rannikon kauppakaupungit', d: 'Kauppiaat vaihtavat kellokoneistoja valmiisiin osiin.', dur: 300, cost: { kellokoneisto: 6, messinki: 60 }, rew: { teras: 150, venttiili: 40, hammasratas: 200 }, fame: 1 },
+  { id: 'peaks', n: 'Myrskyvuoret', d: 'Vaarallinen lento ukkospilvien läpi. Vuorten paja palkitsee rohkeat.', dur: 600, cost: { mantamoottori: 3, voiteluoljy: 40 }, rew: { kellokoneisto: 20, mantamoottori: 4, teras: 100 }, ore: 1, fame: 3 },
+];
+const expAway = () => (S.exp || []).length;
+function sendExp(id) {
+  const e = EXPED.find(q => q.id === id); if (!e) return;
+  if ((S.ships || 0) - expAway() <= 0) { toast('Kaikki ilmalaivat ovat matkalla'); sfx('error'); return; }
+  if (!canAfford(e.cost)) { toast('Materiaalit eivät riitä'); sfx('error'); return; }
+  pay(e.cost); (S.exp = S.exp || []).push({ id, end: S.time + e.dur }); sfx('patent');
+  toast(`Ilmalaiva lähti retkelle: ${e.n} (${fmtTime(e.dur)})`); renderGoal(); renderInv(); save();
+}
+function spawnOrePatch() {
+  const hq = blist.find(b => b.t === 'hq'), r = regionR();
+  for (let tries = 0; tries < 300; tries++) {
+    const cx = W / 2 - r + 3 + (Math.random() * (2 * r - 6) | 0), cy = H / 2 - r + 3 + (Math.random() * (2 * r - 6) | 0);
+    if (hq && Math.hypot(cx - hq.x, cy - hq.y) < 10) continue;
+    let bad = false;
+    for (let dy = -3; dy <= 3 && !bad; dy++) for (let dx = -3; dx <= 3; dx++) { const i = idx(cx + dx, cy + dy); if (grid[i] || ore[i] || terrain[i] === 1) { bad = true; break; } }
+    if (bad) continue;
+    const o = 1 + (Math.random() * 5 | 0), rad = 2 + Math.random() * 1.3;
+    S.found = S.found || []; S.mined = S.mined || {};
+    for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) {
+      if (Math.hypot(dx, dy) > rad + (hash(cx + dx, cy + dy) - .5) * .8) continue;
+      const x = cx + dx, y = cy + dy, i = idx(x, y);
+      if (tree[i]) { tree[i] = 0; (S.felled = S.felled || []).push(i); }
+      ore[i] = o; delete S.mined[i]; S.found.push({ i, o }); invalidateChunk(x, y);
+    }
+    tintC = null; miniBase = null; S.lastFound = { x: cx, y: cy };
+    return ORE_ITEM[o];
+  }
+  return null;
+}
+function expTick() {
+  if (!S.exp || !S.exp.length) return;
+  for (let k = S.exp.length - 1; k >= 0; k--) {
+    const x = S.exp[k]; if (x.end > S.time) continue;
+    S.exp.splice(k, 1); const e = EXPED.find(q => q.id === x.id); if (!e) continue;
+    for (const it in e.rew) give(it, e.rew[it]);
+    S.fame = (S.fame || 0) + e.fame; S.expDone = (S.expDone || 0) + 1;
+    let found = [];
+    if (e.ore && S.diff && S.diff !== 'sandbox') for (let n = 0; n < e.ore; n++) { const f = spawnOrePatch(); if (f) found.push(ITEMS[f].n.toLowerCase()); }
+    toast(`Retkikunta palasi: ${e.n}. Palkkio varastossa, maine +${e.fame}.${found.length ? ` Uusia esiintymiä: ${found.join(', ')}.` : ''}`);
+    sfx('patent'); flashT = .4; renderGoal(); renderInv();
+  }
+}
+const FAME_TITLES = [[0, 'Tuntematon tehtailija'], [3, 'Laakson tehtailija'], [8, 'Arvostettu insinööri'], [15, 'Ilmalaivakapteeni'], [25, 'Höyrykuninkaan neuvonantaja'], [40, 'Legendaarinen Höyryparoni']];
+const fameTitle = () => FAME_TITLES.filter(f => (S.fame || 0) >= f[0]).pop()[1];
+function expHTML() {
+  if (!S.ships) return '';
+  const free = S.ships - expAway();
+  let h = `<h3>Retkikunnat</h3><div class="rate">Maine ${S.fame || 0} · ${fameTitle()} · vapaita ilmalaivoja ${free} / ${S.ships}</div>`;
+  for (const x of S.exp || []) { const e = EXPED.find(q => q.id === x.id); if (e) h += `<div class="req"><span>&#9992;</span><span>${e.n}</span><span>${fmtTime(Math.max(0, x.end - S.time))}</span><div class="bar"><i style="width:${(1 - (x.end - S.time) / e.dur) * 100}%"></i></div></div>`; }
+  for (const e of EXPED) {
+    h += `<div class="resrow"><div class="resh"><b>${e.n}</b><span class="rate">${fmtTime(e.dur)} · maine +${e.fame}</span></div><div class="rate">${e.d}${e.ore && (!S.diff || S.diff === 'sandbox') ? ' (Sandboxissa malmit eivät lopu, joten löytöjä ei tarvita.)' : ''} Tuo: ${Object.keys(e.rew).map(k => `${e.rew[k]} ${ITEMS[k].n.toLowerCase()}`).join(', ')}.</div>`;
+    h += `<div class="rescost">${Object.keys(e.cost).map(k => `<span class="${(S.inv[k] || 0) < e.cost[k] ? 'lack' : ''}">${icon(k)}${e.cost[k]}</span>`).join(' ')}<button class="sbtn" data-a="exp" data-v="${e.id}" ${free > 0 && canAfford(e.cost) ? '' : 'disabled'}>Lähetä</button></div></div>`;
+  }
+  if (S.lastFound) h += `<button class="sbtn" style="margin-top:6px" data-a="expGo">Näytä viimeisin löytö</button>`;
+  return h;
 }
 function contractDone() {
   const c = S.contract; for (const k in c.rew) give(k, c.rew[k]);
@@ -1695,6 +1758,8 @@ const ACH = [
   { id: 'patents', n: 'Patenttien mestari', d: 'Hanki kaikki viisi patenttia.', ok: () => S.level >= 5 },
   { id: 'aurora', n: 'Aurora', d: 'Nosta Aurora telakalta.', ok: () => (S.ships || 0) >= 1 },
   { id: 'fleet', n: 'Ilmalaivasto', d: 'Rakenna kolme ilmalaivaa.', ok: () => (S.ships || 0) >= 3 },
+  { id: 'explorer', n: 'Tutkimusmatkailija', d: 'Palaa kymmeneltä retkeltä.', ok: () => (S.expDone || 0) >= 10 },
+  { id: 'baron', n: 'Höyryparoni', d: 'Kerää 40 mainetta.', ok: () => (S.fame || 0) >= 40 },
   { id: 'normalWin', n: 'Laakson insinööri', d: 'Nosta Aurora Normaalilla vaikeustasolla.', ok: () => (S.ships || 0) >= 1 && S.diff === 'normal' },
   { id: 'hardWin', n: 'Hullu kaivosmies', d: 'Nosta Aurora Hullu!-vaikeustasolla.', ok: () => (S.ships || 0) >= 1 && S.diff === 'hard' },
 ];
@@ -2929,7 +2994,7 @@ function render(fdt) {
 
   // fleet of finished airships circling the valley
   const hqB = blist.find(b => b.t === 'hq');
-  for (let k = 0; k < (S.ships || 0) && hqB; k++) {
+  for (let k = 0; k < (S.ships || 0) - expAway() && hqB; k++) {
     const a = t * (.02 + k * .004) + k * 2.1, R = 16 + k * 6;
     const sx = hqB.x + 1.5 + Math.cos(a) * R, sy = hqB.y + 1.5 + Math.sin(a) * R * .7;
     const head = Math.atan2(Math.cos(a) * R * .7, -Math.sin(a) * R);
@@ -3287,7 +3352,7 @@ function renderGoal() {
   if (!phone) h += tutH;
   if (S.level >= PATENTS.length) {
     const dk = blist.find(b => b.t === 'dock');
-    h = S.ships ? `<p class="pat-name">Aurora on ilmassa</p><p class="pat-desc">Laivastossa ${S.ships} ilmalaivaa. Telakka voi rakentaa lisää.</p>`
+    h = S.ships ? `<p class="pat-name">Aurora on ilmassa</p><p class="pat-desc">Laivastossa ${S.ships} ilmalaivaa. Telakka voi rakentaa lisää.</p>` + expHTML()
       : `<p class="pat-name">Rakenna Aurora</p><p class="pat-desc">${dk ? `Telakalla työn alla: ${DOCK_STAGES[Math.min(dk.stage, 2)].n} (vaihe ${Math.min(dk.stage + 1, 3)} / 3). Avaa telakka nähdäksesi tarvittavat osat.` : 'Rakenna Ilmalaivatelakka{k:dock} ja johda osat sinne kuljettimilla.'}</p>`;
   } else {
     const p = PATENTS[S.level];
@@ -3524,6 +3589,8 @@ function doAction(el) {
     case 'delZep': if (b) removeZep(b); return;
     case 'survey': doSurvey(); return;
     case 'research': buyResearch(el.dataset.v); return;
+    case 'exp': sendExp(el.dataset.v); return;
+    case 'expGo': if (S.lastFound) { cam.x = S.lastFound.x + .5; cam.y = S.lastFound.y + .5; closeDrawers(); } return;
     case 'menu': $('newg').hidden = false; $('saveTxt').value = ''; syncSettings(); return;
     case 'export': { const txt = btoa(unescape(encodeURIComponent(serialize()))); $('saveTxt').value = txt; $('saveTxt').select();
       if (navigator.clipboard) navigator.clipboard.writeText(txt).then(() => toast('Tallennus kopioitu leikepöydälle'), () => toast('Valitse teksti ja kopioi se itse')); return; }
@@ -4116,6 +4183,7 @@ function restore(str) {
   const o = JSON.parse(str);
   if (!o || (o.v !== 1 && o.v !== 2)) throw new Error('bad save');
   S = o.S; genMap(S.seed); applyFelled(); miniBase = null;
+  if (S.found) for (const f of S.found) ore[f.i] = f.o;
   if (S.mined) for (const k in S.mined) { const i = +k; if (ore[i] && S.mined[k] >= oreTotal(i)) ore[i] = 0; }
   tintC = null; chunks = new Map();
   grid = new Array(W * H).fill(null); blist = o.b; trains = o.tr || []; zeps = o.zp || [];
