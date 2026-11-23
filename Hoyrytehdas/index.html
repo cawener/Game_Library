@@ -599,7 +599,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.35';
+const VERSION = '0.36';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -2067,7 +2067,7 @@ function gear(r, n, a, fill, stroke) {
   circle(0, 0, r * 0.22); g.fillStyle = stroke; g.fill();
   g.restore();
 }
-function rivets(o, r = 0.035) { g.fillStyle = P.brassL; for (const sx of [-1, 1]) for (const sy of [-1, 1]) { circle(sx * o, sy * o, r); g.fill(); } }
+function rivets(o, r = 0.035) { for (const sx of [-1, 1]) for (const sy of [-1, 1]) { circle(sx * o + r * .25, sy * o + r * .3, r); g.fillStyle = 'rgba(0,0,0,.45)'; g.fill(); circle(sx * o, sy * o, r); g.fillStyle = P.brassD; g.fill(); circle(sx * o - r * .3, sy * o - r * .3, r * .55); g.fillStyle = P.brassL; g.fill(); } }
 function arrow(d, col = P.brassL) {
   g.save(); g.rotate(d * Math.PI / 2);
   g.beginPath(); g.moveTo(-0.13, -0.37); g.lineTo(0.13, -0.37); g.lineTo(0, -0.5); g.closePath();
@@ -2162,6 +2162,7 @@ const DRAW = {
     const pz = Math.sin((b._a || 0) * 2) * .05;
     for (const sx of [-1, 1]) { g.fillStyle = P.ironL; g.fillRect(sx * .33 - .04, -.22, .08, .44); g.fillStyle = P.brassL; g.fillRect(sx * .33 - .05, -.06 + pz * sx, .1, .12); }
     g.restore();
+    circle(0, 0, .31); g.fillStyle = P.ironD; g.fill(); g.lineWidth = .03; g.strokeStyle = P.brassD; g.stroke();
     gear(.27, 9, b._a || 0, P.brass, P.brassD);
     g.save(); g.rotate(-(b._a || 0) * 2); g.strokeStyle = P.ironL; g.lineWidth = .03; g.beginPath();
     for (let k = 0; k < 3; k++) { const a0 = k * 2.09; g.moveTo(Math.cos(a0) * .03, Math.sin(a0) * .03); g.quadraticCurveTo(Math.cos(a0 + .8) * .1, Math.sin(a0 + .8) * .1, Math.cos(a0 + 1.4) * .12, Math.sin(a0 + 1.4) * .12); }
@@ -2188,7 +2189,8 @@ const DRAW = {
     g.fillStyle = P.soot; g.fill(); g.strokeStyle = P.ironD; g.lineWidth = .04; g.stroke();
     const a = b.act || 0;
     if (a > 0) { const fq = b._sprite && b._fq ? b._fq : null; g.fillStyle = `rgba(255,${140 + 40 * (fq ? fq[0] : Math.sin(t * 9 + b.x))},50,${.55 + .35 * (fq ? fq[1] : a)})`; g.fill(); }
-    circle(.25, .25, .11); g.fillStyle = P.ironD; g.fill(); circle(.25, .25, .065); g.fillStyle = P.soot; g.fill();
+    circle(.25, .25, .14); g.fillStyle = P.brickD; g.fill(); g.lineWidth = .02; g.strokeStyle = 'rgba(0,0,0,.5)'; g.stroke();
+    circle(.25, .25, .11); g.fillStyle = P.ironD; g.fill(); g.lineWidth = .018; g.strokeStyle = P.ironL; g.stroke(); circle(.25, .25, .065); g.fillStyle = a > 0 ? `rgba(255,${120 + 60 * a | 0},40,${.5 + .4 * a})` : P.soot; g.fill();
     g.restore();
     if (b.outT) { g.drawImage(ISPR[b.outT], -.17, .02, .3, .3); }
     arrow(b.d);
@@ -2200,6 +2202,8 @@ const DRAW = {
     const a = b._a || 0;
     g.save(); g.translate(-.12, .06); gear(.2, 9, a, P.brass, P.brassD); g.restore();
     g.save(); g.translate(.15, -.13); gear(.15, 7, -a * 1.28 + .25, P.brassL, P.brassD); g.restore();
+    circle(-.27, -.27, .1); g.fillStyle = P.brassD; g.fill(); circle(-.27, -.27, .075); g.fillStyle = P.cream; g.fill();
+    g.strokeStyle = '#a8342a'; g.lineWidth = .018; g.beginPath(); g.moveTo(-.27, -.27); const na = (b.act || 0) * 2.4 - 2.2; g.lineTo(-.27 + Math.cos(na) * .06, -.27 + Math.sin(na) * .06); g.stroke();
     if (b.rec) { circle(.24, .24, .16); g.fillStyle = 'rgba(20,14,10,.85)'; g.fill(); g.drawImage(ISPR[b.rec], .11, .11, .26, .26); }
     arrow(b.d);
   },
@@ -2357,6 +2361,8 @@ const DRAW = {
     g.strokeStyle = P.woodD; g.lineWidth = .025; g.beginPath(); for (const y of [-.14, .14]) { g.moveTo(-.42, y); g.lineTo(.42, y); } g.stroke();
     g.fillStyle = P.ironD; g.fillRect(-.3, -.42, .09, .84); g.fillRect(.21, -.42, .09, .84);
     g.fillStyle = P.brassL; for (const x of [-.255, .255]) for (const y of [-.3, 0, .3]) { circle(x, y, .025); g.fill(); }
+    g.fillStyle = P.brass; for (const sx of [-1, 1]) for (const sy of [-1, 1]) { g.beginPath(); g.moveTo(sx * .42, sy * .42); g.lineTo(sx * .3, sy * .42); g.lineTo(sx * .42, sy * .3); g.closePath(); g.fill(); }
+    rr(-.07, -.1, .14, .17, .02); g.fillStyle = P.brass; g.fill(); g.lineWidth = .015; g.strokeStyle = P.brassD; g.stroke(); circle(0, -.02, .022); g.fillStyle = P.soot; g.fill(); g.fillRect(-.008, -.02, .016, .05);
     if (b.outOn) arrow(b.d);
   },
   splitter(b) {
@@ -2603,6 +2609,31 @@ function boilerDraw(b, t, big, oil) {
   for (const [x, y] of chims) { circle(x, y, .09); g.fillStyle = P.ironD; g.fill(); circle(x, y, .055); g.fillStyle = P.soot; g.fill(); }
 }
 
+// ---- material finish: one shared light/shadow + grain overlay, laid over each building body (light always from the top-left)
+const FINISH = { drill: ['s', .45], drill2: ['s', .45], smelter: ['s', .45], assembler: ['s', .45], saw: ['s', .45], pumpjack: ['s', .45], splitter: ['s', .45],
+  lumber: ['s', .44], chest: ['s', .42], smelter2: ['s', .9], assembler2: ['s', .9], refinery: ['s', .96], dock: ['s', 1.46],
+  boiler: ['r', .42], bigboiler: ['r', .47], oilboiler: ['r', .42], tank: ['r', .45], mast: ['r', .92], inserter: ['r', .3] };
+const FIN_SPR = {};
+function finSprite(shape) {
+  if (FIN_SPR[shape]) return FIN_SPR[shape];
+  const N = 128, c = mk(N), x = c.getContext('2d'), R = rng(shape === 's' ? 91 : 92);
+  const lg = x.createLinearGradient(0, 0, N, N);
+  lg.addColorStop(0, 'rgba(255,240,210,.24)'); lg.addColorStop(.38, 'rgba(255,240,210,.04)'); lg.addColorStop(.62, 'rgba(0,0,0,.04)'); lg.addColorStop(1, 'rgba(0,0,0,.3)');
+  x.fillStyle = lg; x.fillRect(0, 0, N, N);
+  const sp = x.createRadialGradient(N * .3, N * .26, 0, N * .3, N * .26, N * .42); sp.addColorStop(0, 'rgba(255,248,225,.16)'); sp.addColorStop(1, 'rgba(255,248,225,0)');
+  x.fillStyle = sp; x.fillRect(0, 0, N, N);
+  for (let k = 0; k < 900; k++) { const l = R() < .5; x.fillStyle = l ? 'rgba(255,240,210,.07)' : 'rgba(0,0,0,.09)'; x.fillRect(R() * N, R() * N, 1 + R(), 1 + R()); } // grain
+  // inner ambient occlusion along the rim
+  x.globalCompositeOperation = 'source-over';
+  const ao = shape === 'r' ? x.createRadialGradient(N / 2, N / 2, N * .34, N / 2, N / 2, N * .5) : null;
+  if (ao) { ao.addColorStop(0, 'rgba(0,0,0,0)'); ao.addColorStop(1, 'rgba(0,0,0,.22)'); x.fillStyle = ao; x.fillRect(0, 0, N, N); }
+  else { for (const [x0, y0, x1, y1] of [[0, 0, 0, 10], [0, N, 0, N - 10], [0, 0, 10, 0], [N, 0, N - 10, 0]]) { const e = x.createLinearGradient(x0, y0, x1, y1); e.addColorStop(0, 'rgba(0,0,0,.2)'); e.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = e; x.fillRect(0, 0, N, N); } }
+  // clip to the body shape
+  x.globalCompositeOperation = 'destination-in'; x.fillStyle = '#000'; x.beginPath();
+  if (shape === 'r') x.arc(N / 2, N / 2, N / 2, 0, 7); else if (x.roundRect) x.roundRect(0, 0, N, N, N * .1); else x.rect(0, 0, N, N); x.fill();
+  return (FIN_SPR[shape] = c);
+}
+function finishFx(t) { const f = FINISH[t]; if (!f) return; const h = f[1]; g.drawImage(finSprite(f[0]), -h, -h, h * 2, h * 2); }
 const LODABLE = { inserter: 1, saw: 1, lumber: 1, belt: 1, fastbelt: 1, drill: 1, drill2: 1, smelter: 1, assembler: 1, chest: 1, splitter: 1, lamp: 1, boiler: 1, bigboiler: 1, oilboiler: 1, smelter2: 1, assembler2: 1, pumpjack: 1, refinery: 1, mast: 1 };
 const LOD_CACHE = new Map();
 let lodOn = false;
@@ -2612,7 +2643,7 @@ function lodSprite(b) {
   const w = b.w || 1, px = 32 * w; c = mk(px);
   const g0 = g; g = c.getContext('2d'); g.scale(32, 32); g.translate(w / 2, w / 2);
   const fake = { t: b.t, d: b.d, x: 0, y: 0, w: b.w, h: b.h, _cv: b._cv || null, items: [], act: 0, sid: 0, mode: 'load', fuel: 1, burn: 0 };
-  DRAW[b.t](fake, 0); g = g0;
+  DRAW[b.t](fake, 0); finishFx(b.t); g = g0;
   LOD_CACHE.set(key, c); return c;
 }
 const NO_SHADOW = { belt: 1, fastbelt: 1, tunnel: 1, rail: 1, station: 1, signal: 1, pipe: 1, lamp: 1 };
@@ -2651,7 +2682,7 @@ function cachedSprite(b, t, key) {
   if (b._aq != null && (b.t === 'drill' || b.t === 'drill2' || b.t === 'assembler' || b.t === 'inserter')) b._a = b._aq;
   if (b.t === 'inserter') b._sw = b._swq;
   if (b.t === 'assembler') b.rec = null; if (b.t === 'smelter') { b.outT = null; b._sprite = true; }
-  DRAW[b.t](b, tt); g = g0;
+  DRAW[b.t](b, tt); finishFx(b.t); g = g0;
   b._a = a0; b._sw = sw0; b.rec = rec; b.outT = outT; b._sprite = false;
   SPR.set(k, c); return c;
 }
@@ -2693,7 +2724,7 @@ function bchunkAt(cx, cy, px) {
   for (const b of list) {
     const w = b.w || 1;
     if (LODABLE[b.t]) { x.drawImage(lodSprite(b), b.x, b.y, w, w); continue; }
-    x.save(); x.translate(b.x + w / 2, b.y + w / 2); DRAW[b.t](b, 0); x.restore();
+    x.save(); x.translate(b.x + w / 2, b.y + w / 2); DRAW[b.t](b, 0); finishFx(b.t); x.restore();
     if (b.pipe) pipeUnder(b); if (b.opipe) pipeUnder(b, true);
   }
   for (const b of list) if (b.t === 'tunnel') tunnelArch(b);
@@ -2721,7 +2752,7 @@ function drawB(b, t, alpha) {
   }
   g.save(); g.translate(b.x + w / 2, b.y + w / 2);
   if (alpha < 1) g.globalAlpha = alpha;
-  DRAW[b.t](b, t);
+  DRAW[b.t](b, t); finishFx(b.t);
   if (b.up > 1) for (let l = 1; l < b.up; l++) { circle(-.36 + (l - 1) * .13, -.36, .05); g.fillStyle = P.brassL; g.fill(); g.strokeStyle = P.brassD; g.lineWidth = .02; g.stroke(); }
   g.restore();
 }
@@ -2737,7 +2768,7 @@ function buildToolIcons() {
     const b = k === 'station' ? { t: k, x: 0, y: 0, d: 0, sid: 1, mode: 'load' } : makeB(k, 0, 0, 0);
     if (BUILD[k].size) { g.scale(1 / BUILD[k].size, 1 / BUILD[k].size); if (k === 'dock') b.stage = 2; }
     if (k === 'assembler') b.rec = 'hammasratas';
-    DRAW[k](b, 0); TURL[k] = c.toDataURL();
+    DRAW[k](b, 0); finishFx(k); TURL[k] = c.toDataURL();
   }
   iconMode = false;
   const c = mk(80); g = c.getContext('2d'); g.scale(80, 80); g.translate(.5, .5);
@@ -2879,14 +2910,14 @@ function render(fdt) {
   }
   if (!lodOn) for (const b of blist) if (b.t === 'tunnel' && vis(b)) tunnelArch(b);
   // all building shadows in one fill
-  g.fillStyle = 'rgba(8,5,2,.34)'; g.beginPath();
-  if (!lodOn) for (const b of blist) {
-    if (NO_SHADOW[b.t] || isBelt(b) || isRail(b) || !vis(b)) continue;
-    const w = b.w || 1;
-    if (isBoiler(b)) { const r = b.t === 'bigboiler' ? .47 : .43; g.moveTo(b.x + .5 + shX + r, b.y + .5 + shY); g.arc(b.x + .5 + shX, b.y + .5 + shY, r, 0, Math.PI * 2); }
-    else g.rect(b.x + .05 + shX, b.y + .05 + shY, w - .1, w - .1);
-  }
-  g.fill();
+  // soft shadows: three nested fills (penumbra → core) instead of one hard-edged shape
+  if (!lodOn) { const sh = []; for (const b of blist) if (!(NO_SHADOW[b.t] || isBelt(b) || isRail(b) || !vis(b))) sh.push(b);
+    for (const [grow, a] of [[.09, .12], [0, .24]]) {
+      g.fillStyle = `rgba(8,5,2,${a})`; g.beginPath();
+      for (const b of sh) { const w = b.w || 1;
+        if (isBoiler(b)) { const r = (b.t === 'bigboiler' ? .47 : .43) + grow; g.moveTo(b.x + .5 + shX + r, b.y + .5 + shY); g.arc(b.x + .5 + shX, b.y + .5 + shY, r, 0, Math.PI * 2); }
+        else g.rect(b.x + .05 + shX - grow, b.y + .05 + shY - grow, w - .1 + grow * 2, w - .1 + grow * 2); }
+      g.fill(); } }
   // machines
   for (const b of blist) {
     if (isBelt(b) || isRail(b)) continue;
