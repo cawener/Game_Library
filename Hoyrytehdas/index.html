@@ -635,7 +635,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.50.13';
+const VERSION = '0.50.14';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -1483,6 +1483,7 @@ function bucket() {
   return bk;
 }
 function rateMark(b, k) { if (b._t0 == null) b._t0 = S.time; const q = b._rq || (b._rq = []); q.push(S.time, k); while (q.length && q[0] < S.time - 60) q.splice(0, 2); }
+const fmtR = v => v >= 10 ? String(Math.round(v)) : v.toFixed(1).replace('.', ',');
 function rateOfB(b) { const q = b._rq; if (!q || b._t0 == null) return 0; let n = 0; for (let i = 0; i < q.length; i += 2) if (q[i] >= S.time - 60) n += q[i + 1]; return n * 60 / Math.max(10, Math.min(60, S.time - b._t0)); }
 function stat(item, n, kind) { const m = bucket()[kind]; m[item] = (m[item] || 0) + n; if (kind === 'p') { S.made = S.made || {}; S.made[item] = (S.made[item] || 0) + n; } }
 function rateOf(item, kind) {
@@ -3905,6 +3906,8 @@ function renderInfo() {
       h += prog(b.prog);
       h += b.t === 'saw' ? '<h3>Sahausohje</h3>' : '<h3>Sulatusohjeet</h3>';
       const TB = tableOf(b);
+      { const cr = b.inT && TB[b.inT]; if (cr) { const per = mulOf(b) / cr.t * 60;
+        h += '<h3>Tuotanto</h3>' + kv(`${icon(cr.out)} ${ITEMS[cr.out].n}`, `${fmtR(cr.k * per)}/min täydellä höyryllä`) + kv('Nyt', `${fmtR(rateOfB(b))}/min`) + kv(`Kuluttaa ${icon(b.inT)} ${ITEMS[b.inT].n}`, `${fmtR(cr.n * per)}/min`); } }
       for (const k in TB) { const r = TB[k]; if (S.level < r.lvl) continue; h += kv(`${r.n} × ${ITEMS[k].n}`, `${icon(r.out)} ${ITEMS[r.out].n} (${r.t} s)`); }
       break;
     }
@@ -3914,8 +3917,10 @@ function renderInfo() {
       h += '</div>';
       const r = RECIPES[b.rec];
       if (r) {
-        for (const k in r.in) h += kv(`${icon(k)} ${ITEMS[k].n}`, `${b.inv[k] || 0} / ${r.in[k]}`);
+        const per = mulOf(b) / r.t * 60;
+        for (const k in r.in) h += kv(`${icon(k)} ${ITEMS[k].n}`, `${b.inv[k] || 0} / ${r.in[k]} <span class="rate">· ${fmtR(r.in[k] * per)}/min</span>`);
         h += kv(`Tuottaa ${r.k} × ${ITEMS[b.rec].n}`, `${r.t} s`) + kv('Valmiina', b.outN) + prog(b.prog);
+        h += kv('Tuotanto', `${fmtR(r.k * per)}/min täydellä höyryllä`) + kv('Nyt', `${fmtR(rateOfB(b))}/min`);
       }
       break;
     }
