@@ -629,7 +629,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.50.11';
+const VERSION = '0.50.12';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -1007,6 +1007,21 @@ function chunkAt(cx, cy, px = CPX) {
       if (wet && nwet && (depth[j] || 5) !== (depth[i] || 5)) band(xx, yy, d, .5, hexA(WATER_COL[depth[j] || 5], .5));
       else if (wet && !nwet) { band(xx, yy, d, .3, 'rgba(205,232,226,.32)'); band(xx, yy, d, .07, 'rgba(240,248,244,.5)'); }
       else if (!wet && nwet) { band(xx, yy, d, .24, 'rgba(176,154,104,.55)'); band(xx, yy, d, .06, 'rgba(120,100,64,.6)'); }
+    }
+    // rounded shore corners: where two perpendicular neighbours (and the diagonal) are of the other kind
+    for (let d = 0; d < 4; d++) {
+      const e = (d + 1) % 4, sx = DX[d] + DX[e], sy = DY[d] + DY[e];
+      const ax = tx + DX[d], ay = ty + DY[d], bx = tx + DX[e], by = ty + DY[e], qx = tx + sx, qy = ty + sy;
+      if (!inB(ax, ay) || !inB(bx, by) || !inB(qx, qy)) continue;
+      const oth = j => (terrain[j] === 1) !== wet;
+      if (!oth(idx(ax, ay)) || !oth(idx(bx, by)) || !oth(idx(qx, qy))) continue;
+      const r = .45, kx = xx + (sx > 0 ? 1 : 0), ky = yy + (sy > 0 ? 1 : 0), ccx = kx - sx * r, ccy = ky - sy * r;
+      const a1 = Math.atan2(0, sx), a0 = Math.atan2(sy, 0); let dd = a1 - a0; while (dd > Math.PI) dd -= 2 * Math.PI; while (dd < -Math.PI) dd += 2 * Math.PI;
+      x.save(); x.beginPath(); x.moveTo(kx, ky); x.lineTo(kx - sx * r, ky); x.arc(ccx, ccy, r, a0, a0 + dd, dd < 0); x.closePath(); x.clip();
+      if (wet) { x.drawImage(GROUND[(hash(qx, qy) * 6) | 0], kx - (sx > 0 ? 1 : 0), ky - (sy > 0 ? 1 : 0), 1, 1); x.fillStyle = 'rgba(176,154,104,.55)'; x.fillRect(kx - 1, ky - 1, 2, 2); }
+      else { x.fillStyle = WATER_COL[depth[idx(ax, ay)] || 5]; x.fillRect(kx - 1, ky - 1, 2, 2); x.fillStyle = 'rgba(205,232,226,.3)'; x.fillRect(kx - 1, ky - 1, 2, 2); }
+      x.restore();
+      x.beginPath(); x.arc(ccx, ccy, r, a0, a0 + dd, dd < 0); x.lineWidth = .06; x.strokeStyle = 'rgba(240,248,244,.5)'; x.stroke();
     }
   }
   chunks.set(key, c); return c;
