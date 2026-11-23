@@ -457,6 +457,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
     <div class="keys touchKeys" id="helpPhone" hidden>
       <kbd>Vedä yhdellä sormella</kbd><span>Liikuta näkymää</span>
       <kbd>Nipistä kahdella sormella</kbd><span>Zoomaa lähemmäs tai kauemmas</span>
+      <kbd>Pidä sormea painettuna</kbd><span>Näyttää kohteen tiedot: malmia jäljellä, rakennuksen tila, veden syvyys</span>
       <kbd>Napauta</kbd><span>Tyhjällä kädellä: louhi malmia käsin, kaada puu tai avaa rakennuksen tiedot</span>
       <kbd>Alapalkki</kbd><span>Ylärivin välilehdet vaihtavat luokkaa (Logistiikka, Tuotanto, Energia ja öljy, Liikenne, Telakka). Napauta korttia valitaksesi rakennuksen ja uudelleen poistaaksesi valinnan. Palkkia voi vierittää sivuttain</span>
       <kbd>Rakentaminen</kbd><span>1) <b>Valitse paikka</b>: napauta karttaa. 2) <b>Valitse suunta</b>: napauta haluttua nuolta haamun ympärillä. Haamu tai ✓ rakentaa korostettuun suuntaan, ↻ kääntää ja ✕ peruu. Vetäminen liikuttaa näkymää rakennustilassakin</span>
@@ -599,7 +600,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.36';
+const VERSION = '0.37';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -2146,7 +2147,11 @@ function itemShape(name) {
 function buildItemSprites() {
   for (const k in ITEMS) {
     const c = mk(64); g = c.getContext('2d'); g.scale(64, 64); g.translate(.5, .5); itemShape(k);
-    ISPR[k] = c; IURL[k] = c.toDataURL();
+    IURL[k] = c.toDataURL();
+    const sil = mk(64), sx = sil.getContext('2d'); sx.drawImage(c, 0, 0); sx.globalCompositeOperation = 'source-in'; sx.fillStyle = '#000'; sx.fillRect(0, 0, 64, 64);
+    const o = mk(64), ox = o.getContext('2d');
+    for (const [dx, dy, a] of [[4, 6, .16], [3, 4, .22]]) { ox.globalAlpha = a; ox.drawImage(sil, dx, dy); }
+    ox.globalAlpha = 1; ox.drawImage(c, 0, 0); ISPR[k] = o;
   }
   g = ctx;
 }
@@ -2453,22 +2458,31 @@ function beltDraw(b, t, fast) {
   const cvv = iconMode ? null : (b._cv !== undefined ? b._cv : beltCurve(b));
   if (cvv) return curveDraw(b, t, fast, cvv);
   g.save(); g.rotate(b.d * Math.PI / 2);
-  g.fillStyle = '#26211c'; g.fillRect(-.5, -.5, 1, 1);
-  g.fillStyle = '#3a332b'; g.fillRect(-.4, -.5, .8, 1);
-  g.fillStyle = fast ? P.copper : P.brassD; g.fillRect(-.5, -.5, .1, 1); g.fillRect(.4, -.5, .1, 1);
-  g.fillStyle = fast ? P.copperL : P.brass;
-  for (const y of [-.3, .2]) { circle(-.45, y, .025); g.fill(); circle(.45, y, .025); g.fill(); }
+  g.fillStyle = '#211c17'; g.fillRect(-.5, -.5, 1, 1);
+  // rubber belt: rounded cross-section (dark edges, lit middle)
+  const bg = g.createLinearGradient(-.4, 0, .4, 0); bg.addColorStop(0, '#2a241e'); bg.addColorStop(.3, '#463d33'); bg.addColorStop(.55, '#4a4136'); bg.addColorStop(1, '#2a241e');
+  g.fillStyle = bg; g.fillRect(-.4, -.5, .8, 1);
   g.save(); g.beginPath(); g.rect(-.4, -.5, .8, 1); g.clip();
   const o = ((t * BUILD[b.t].speed) % 0.5 + 0.5) % 0.5;
-  g.strokeStyle = fast ? '#7a4a2c' : '#5d5141'; g.lineWidth = .07; g.beginPath();
-  for (let k = -1; k < 3; k++) { const y = .5 - k * .5 - o; g.moveTo(-.22, y + .1); g.lineTo(0, y - .08); g.lineTo(.22, y + .1); }
-  g.stroke(); g.restore(); g.restore();
+  g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = .025; g.beginPath(); // moving slats
+  for (let k = -1; k < 5; k++) { const y = .5 - k * .25 - (o % .25); g.moveTo(-.4, y); g.lineTo(.4, y); }
+  g.stroke();
+  g.strokeStyle = fast ? '#8a5432' : '#6a5c49'; g.lineWidth = .06; g.lineCap = 'round'; g.beginPath();
+  for (let k = -1; k < 3; k++) { const y = .5 - k * .5 - o; g.moveTo(-.2, y + .09); g.lineTo(0, y - .07); g.lineTo(.2, y + .09); }
+  g.stroke(); g.lineCap = 'butt';
+  g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(-.4, -.5, .05, 1); g.fillRect(.35, -.5, .05, 1); // rails cast shade on the belt
+  g.restore();
+  // side rails: metal with a lit top edge
+  for (const x0 of [-.5, .4]) { const rg = g.createLinearGradient(x0, 0, x0 + .1, 0); rg.addColorStop(0, fast ? P.copperL : P.brass); rg.addColorStop(.5, fast ? P.copper : P.brassD); rg.addColorStop(1, fast ? P.copperD : '#4e3c18'); g.fillStyle = rg; g.fillRect(x0, -.5, .1, 1); }
+  for (const y of [-.3, .2]) for (const x of [-.45, .45]) { circle(x, y, .028); g.fillStyle = 'rgba(0,0,0,.4)'; g.fill(); circle(x - .006, y - .006, .02); g.fillStyle = fast ? P.copperL : P.brassL; g.fill(); }
+  g.restore();
 }
 function curveDraw(b, t, fast, side) {
   g.save(); g.rotate(b.d * Math.PI / 2); if (side === 'R') g.scale(-1, 1);
   g.fillStyle = '#26211c'; g.fillRect(-.5, -.5, 1, 1);
   const cx = -.5, cy = -.5;
-  g.beginPath(); g.arc(cx, cy, .9, 0, Math.PI / 2); g.arc(cx, cy, .1, Math.PI / 2, 0, true); g.closePath(); g.fillStyle = '#3a332b'; g.fill();
+  const cg = g.createRadialGradient(cx, cy, .1, cx, cy, .9); cg.addColorStop(0, '#2a241e'); cg.addColorStop(.35, '#463d33'); cg.addColorStop(.6, '#4a4136'); cg.addColorStop(1, '#2a241e');
+  g.beginPath(); g.arc(cx, cy, .9, 0, Math.PI / 2); g.arc(cx, cy, .1, Math.PI / 2, 0, true); g.closePath(); g.fillStyle = cg; g.fill();
   g.strokeStyle = fast ? P.copper : P.brassD; g.lineWidth = .1;
   g.beginPath(); g.arc(cx, cy, .95, 0, Math.PI / 2); g.stroke();
   g.beginPath(); g.arc(cx, cy, .05, 0, Math.PI / 2); g.stroke();
@@ -4118,6 +4132,12 @@ cv.addEventListener('pointerdown', e => {
   }
   const t = tileAt(e.clientX, e.clientY);
   drag = { btn: e.button, sx: e.clientX, sy: e.clientY, moved: false, last: t, cx: cam.x, cy: cam.y, mode: null };
+  touchTipUntil = 0; if (e.pointerType === 'touch') $('mtip').hidden = true;
+  if (e.pointerType === 'touch' && !tool && e.button === 0) { // long press = the hover info a mouse gets
+    const d = drag, px = e.clientX, py = e.clientY;
+    d.lpT = setTimeout(() => { if (drag !== d || d.moved || pointers.size !== 1) return; hover = t; const h = mapTipHTML(); if (!h) return;
+      d.lp = true; showTouchTip(h.replace(/Klikkaa/g, 'Napauta').replace(/klikkaamalla/g, 'napauttamalla'), px, py); if (navigator.vibrate) try { navigator.vibrate(12); } catch (er) {} }, 480);
+  }
   lastPT = e.pointerType;
   if (e.button === 1 || (e.button === 0 && !tool)) drag.mode = 'pan';
   else if (e.button === 0 && e.pointerType === 'touch' && touchBuildTool()) { drag.mode = 'pan'; drag.tb = true; }
@@ -4160,8 +4180,17 @@ function mapTipHTML() {
   if (terrain[i] === 1) return `<b>${(depth[i] || 5) > 2 ? 'Syvä vesi' : 'Matala vesi'}</b><div class="mut">Kattilat rakennetaan veden viereen.</div><div class="mut">${(depth[i] || 5) > 2 ? 'Liian syvää siltaa varten: alita maanalaisella kuljettimella.' : 'Kuljettimet, putket ja raiteet voi rakentaa tähän siltana (+2 lankkua).'}</div>`;
   return null;
 }
+let touchTipUntil = 0;
+function showTouchTip(h, x, y) {
+  const el = $('mtip'); el.innerHTML = h; el._h = h; el.hidden = false;
+  const r = el.getBoundingClientRect();
+  el.style.left = Math.max(8, Math.min(innerWidth - r.width - 8, x - r.width / 2)) + 'px';
+  el.style.top = Math.max(8, y - r.height - 40 < 60 ? y + 40 : y - r.height - 40) + 'px';
+  touchTipUntil = performance.now() + 3500;
+}
 function renderMapTip() {
   const el = $('mtip');
+  if (touchTipUntil) { if (performance.now() < touchTipUntil) return; touchTipUntil = 0; el.hidden = true; return; }
   if (!mouseXY || drag || tool || performance.now() - hoverSince < 350 || !$('help').hidden) { el.hidden = true; return; }
   const h = mapTipHTML(); if (!h) { el.hidden = true; return; }
   if (el._h !== h) { el.innerHTML = h; el._h = h; }
@@ -4170,7 +4199,7 @@ function renderMapTip() {
   el.style.left = Math.min(innerWidth - r.width - 8, mouseXY[0] + 18) + 'px';
   el.style.top = Math.min(innerHeight - r.height - 8, mouseXY[1] + 18) + 'px';
 }
-cv.addEventListener('pointerleave', () => { mouseXY = null; $('mtip').hidden = true; });
+cv.addEventListener('pointerleave', () => { mouseXY = null; if (!touchTipUntil) $('mtip').hidden = true; });
 cv.addEventListener('pointermove', e => {
   if (e.pointerType === 'mouse') {
     mouseXY = [e.clientX, e.clientY];
@@ -4218,6 +4247,8 @@ cv.addEventListener('pointermove', e => {
 function endPointer(e) {
   pointers.delete(e.pointerId);
   if (pinch) { if (pointers.size < 2) pinch = null; drag = null; return; }
+  if (drag && drag.lpT) clearTimeout(drag.lpT);
+  if (drag && drag.lp) { drag = null; commitGrp(); return; }
   if (drag && drag.tb && !drag.moved) touchTap(e.clientX, e.clientY);
   else if (drag && drag.mode === 'pan' && !drag.moved && drag.btn === 0) clickTile(tileAt(e.clientX, e.clientY), { ctrl: e.ctrlKey || e.metaKey, shift: e.shiftKey });
   if (drag && drag.mode === 'rect') copyArea(drag.a, drag.b);
