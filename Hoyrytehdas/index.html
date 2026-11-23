@@ -123,6 +123,10 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--copper), var(--brass)); }
 .bar i.done { background: var(--ok); }
 .rate { color: var(--muted); font-size: 11px; }
+.devlv { border: 1px dashed var(--brass-dark); border-radius: 5px; padding: 8px 10px; }
+.devrow { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 6px 0 2px; }
+.devrow b { font-family: var(--display); font-size: 22px; color: var(--brass-light); min-width: 70px; text-align: center; font-variant-numeric: tabular-nums; }
+.devrow .sbtn { min-width: 44px; min-height: 36px; font-size: 16px; }
 .unl { font-size: 12px; color: var(--brass-light); margin-top: 8px; line-height: 1.4; }
 #ovl { position: fixed; z-index: 6; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 150px); padding: 6px 12px; font-size: 13px; background: rgba(16,12,9,.94); border: 1px solid var(--brass-dark); border-radius: 4px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; max-width: calc(100% - 20px); }
 #ovl b { font-family: var(--display); color: var(--brass-light); letter-spacing: .05em; }
@@ -586,6 +590,8 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <label for="setAuto">Automaattitallennus</label><select id="setAuto"><option value="15">15 s välein</option><option value="30">30 s välein</option><option value="60">1 min välein</option><option value="0">Pois</option></select>
     </div>
     <div class="acts"><button class="sbtn" data-a="tutAgain">Näytä opastus uudelleen</button></div>
+    <h3>Kehittäjätila</h3>
+    <div id="devBox"></div>
     <h3>Tallennuspaikat</h3>
     <p class="lead">Peli tallentuu automaattisesti. Tallennuspaikkoihin voit lisäksi ottaa omia kopioita. Lataaminen korvaa nykyisen pelin, joten tallenna se ensin paikkaan, jos haluat säilyttää sen.</p>
     <div id="slots" class="slots"></div>
@@ -608,7 +614,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.41';
+const VERSION = '0.42';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -3546,7 +3552,10 @@ function renderGoal() {
   setHTML($('tutBody'), phone ? tutH : '');
   if (!tutOn && $('tutP').classList.contains('open')) { $('tutP').classList.remove('open'); tab.classList.remove('on'); }
   if (!phone) h += tutH;
-  if (S.level >= PATENTS.length) {
+  if (S.dev) { // developer mode: step the patent level freely instead of applying for patents
+    h += `<div class="devlv"><div class="pat-no">Dev-tila · patenttitaso</div><div class="devrow"><button class="sbtn" data-a="devLv" data-v="-1" aria-label="Edellinen taso" ${S.level <= 0 ? 'disabled' : ''}>&#9664;</button><b>${S.level} / ${PATENTS.length}</b><button class="sbtn" data-a="devLv" data-v="1" aria-label="Seuraava taso" ${S.level >= PATENTS.length ? 'disabled' : ''}>&#9654;</button></div>`
+      + `<div class="unl">${S.level ? `Taso ${S.level}: ${PATENTS[S.level - 1].n}` : 'Ei patentteja'}${S.level < PATENTS.length ? ` · seuraava: ${PATENTS[S.level].n}` : ''}</div></div>` + expHTML();
+  } else if (S.level >= PATENTS.length) {
     const dk = blist.find(b => b.t === 'dock');
     h = S.ships ? `<p class="pat-name">Aurora on ilmassa</p><p class="pat-desc">Laivastossa ${S.ships} ilmalaivaa. Telakka voi rakentaa lisää.</p>` + expHTML()
       : `<p class="pat-name">Rakenna Aurora</p><p class="pat-desc">${dk ? `Telakalla työn alla: ${DOCK_STAGES[Math.min(dk.stage, 2)].n} (vaihe ${Math.min(dk.stage + 1, 3)} / 3). Avaa telakka nähdäksesi tarvittavat osat.` : 'Rakenna Ilmalaivatelakka{k:dock} ja johda osat sinne kuljettimilla.'}</p>`;
@@ -3810,6 +3819,10 @@ function doAction(el) {
     case 'mute': muted = !muted; try { localStorage.setItem('hoyrytehdas-mute', muted ? '1' : '0'); } catch (e) {} el.textContent = muted ? 'Ääni pois' : 'Ääni päällä'; audio(); if (!muted) { sfx('craft'); startMusic(); } return;
     case 'slotSave': try { localStorage.setItem(slotKey(el.dataset.v), serialize()); localStorage.setItem(slotKey(el.dataset.v) + '-meta', JSON.stringify({ when: Date.now(), time: S.time, level: S.level, n: blist.length })); toast(`Tallennettu paikkaan ${el.dataset.v}`); } catch (err) { toast('Tallennus ei onnistunut: selaimen tallennustila voi olla täynnä'); } renderSlots(); return;
     case 'slotLoad': try { const str = localStorage.getItem(slotKey(el.dataset.v)); if (!str) return; restore(str); $('newg').hidden = true; closeInfo(); renderTools(); renderInv(); renderGoal(); save(); toast(`Ladattu paikasta ${el.dataset.v}`); } catch (err) { toast('Tallennusta ei voitu ladata'); } return;
+    case 'devOpen': devAsk = true; renderDev(); return;
+    case 'devTry': devTry(); return;
+    case 'devOff': S.dev = false; renderDev(); renderGoal(); toast('Dev-tila pois'); save(); return;
+    case 'devLv': { const nl = Math.max(0, Math.min(PATENTS.length, S.level + +el.dataset.v)); if (nl === S.level) return; S.level = nl; renderTools(); renderGoal(); renderInv(); toast(`Dev-tila: patenttitaso ${S.level}${S.level ? ' (' + PATENTS[S.level - 1].n + ')' : ''}`); return; }
     case 'tutAgain': S.tut = 0; $('newg').hidden = true; renderGoal(); toast('Opastus alkaa alusta'); return;
     case 'alert': jumpAlert(); return;
     case 'toolsTog': setToolsHidden(!document.body.classList.contains('toolsHidden')); return;
@@ -4574,8 +4587,22 @@ function renderSlots() {
   }
   $('slots').innerHTML = h;
 }
+let devAsk = false;
+function renderDev() {
+  const el = $('devBox'); if (!el) return;
+  el.innerHTML = S.dev
+    ? `<p class="lead">Dev-tila on päällä: patenttitasoa vaihdetaan Patentit-paneelin nuolilla.</p><div class="acts"><button class="sbtn" data-a="devOff">Poista dev-tila</button></div>`
+    : devAsk ? `<div class="bpsave"><label for="devPw" class="rate">Salasana</label><input id="devPw" type="password" autocomplete="off" maxlength="40"><button class="sbtn" data-a="devTry">Avaa</button></div><div class="rate" id="devErr"></div>`
+    : `<div class="acts"><button class="sbtn" data-a="devOpen">Dev-tila</button></div>`;
+  if (devAsk && !S.dev) { const i = $('devPw'); i.focus(); i.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); devTry(); } }; }
+}
+function devTry() {
+  const i = $('devPw'); if (!i) return;
+  if (i.value === 'devaus') { S.dev = true; devAsk = false; renderDev(); renderGoal(); toast('Dev-tila päällä: patenttitason voi valita Patentit-paneelista'); save(); }
+  else { $('devErr').textContent = 'Väärä salasana'; i.value = ''; i.focus(); sfx('error'); }
+}
 function syncSettings() {
-  renderSlots();
+  renderSlots(); devAsk = false; renderDev();
   $('setVol').value = PREF.vol; $('setMusic').checked = PREF.music; $('setMusicVol').value = PREF.musicVol;
   $('setNight').checked = !S.noNight; $('setAuto').value = String(PREF.autosave); $('setQual').value = PREF.quality || '';
 }
