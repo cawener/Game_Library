@@ -226,6 +226,9 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 .curTool { margin-left: auto; display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0; }
 .curTool button { display: inline-flex; align-items: center; gap: 5px; background: #3a2c1c; border: 1px solid var(--brass); color: var(--brass-light); font-size: 11px; padding: 2px 7px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
 .curTool img { width: 16px; height: 16px; } .curTool .ctX { padding: 2px 6px; }
+.sech { display: flex; align-items: baseline; gap: 8px; width: 100%; margin: 12px 0 4px; padding: 0 0 3px; background: none; border: none; border-bottom: 1px solid #3a2e22; color: var(--brass-light); font-family: var(--display); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; text-align: left; cursor: pointer; }
+.sech .secs { flex: 1; font-family: var(--body); font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--muted); text-align: right; }
+.sech .secc { color: var(--brass); }
 #toast div { background: rgba(20,15,11,.95); border: 1px solid var(--brass); border-radius: 4px; padding: 7px 14px; font-size: 14px; animation: fade 3.2s forwards; }
 @keyframes fade { 0%{opacity:0;transform:translateY(-6px)} 8%{opacity:1;transform:none} 80%{opacity:1} 100%{opacity:0} }
 
@@ -648,7 +651,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.50.24';
+const VERSION = '0.50.25';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -1455,6 +1458,11 @@ function buyResearch(id) {
   toast(`Insinöörikilta: ${r.n} taso ${resLv(id)} (${r.fx} +${Math.round(resLv(id) * r.per * 100)} %)`);
   renderGoal(); renderInv(); save();
 }
+// collapsible panel sections; closed ones show a one-line summary
+function sec(id, title, summary, body) {
+  const closed = (PREF.secClosed || []).includes(id);
+  return `<button class="sech${closed ? ' closed' : ''}" data-a="secTog" data-v="${id}" aria-expanded="${!closed}"><span>${title}</span><span class="secs">${closed ? summary : ''}</span><span class="secc">${closed ? '&#9662;' : '&#9652;'}</span></button>` + (closed ? '' : `<div class="secb">${body}</div>`);
+}
 // ---- trading house: rotating barter offers (deliberately below production value)
 const TRADE_VAL = { rautalevy: [1, 0], kuparilevy: [1, 0], hiili: [.5, 0], kivi: [.4, 0], tiili: [1.2, 0], puu: [.5, 0], lankku: [1, 1], hammasratas: [2.2, 1], kuparikela: [.6, 1], putki: [1.2, 1],
   sinkki: [1.5, 1], messinki: [2.5, 1], teras: [3.5, 2], venttiili: [8, 2], voiteluoljy: [3, 3], kellokoneisto: [25, 3], mantamoottori: [80, 4] };
@@ -1482,14 +1490,15 @@ function doTrade(i) {
 function tradeHTML() {
   if (S.level < 1) return '';
   const { per, offers } = tradeOffers(), used = S.tradeUsed && S.tradeUsed.per === per ? S.tradeUsed.n : [0, 0, 0];
-  let h = `<h3>Kauppahuone</h3><div class="rate">Vaihda ylijäämää tarvitsemaasi. Uudet tarjoukset ${fmtTime((per + 1) * TRADE_PERIOD - S.time)} kuluttua.</div>`;
+  let h = `<div class="rate">Vaihda ylijäämää tarvitsemaasi. Uudet tarjoukset ${fmtTime((per + 1) * TRADE_PERIOD - S.time)} kuluttua.</div>`;
   offers.forEach((o, i) => { const left = TRADE_USES - used[i];
     h += `<div class="rescost trade"><span class="${(S.inv[o.give] || 0) < o.gAmt ? 'lack' : ''}">${icon(o.give)}${o.gAmt}</span><span>&#8594;</span><span>${icon(o.get)}${o.getAmt}</span><span class="rate">${left}/${TRADE_USES}</span><button class="sbtn" data-a="trade" data-v="${i}" ${left > 0 && (S.inv[o.give] || 0) >= o.gAmt ? '' : 'disabled'}>Vaihda</button></div>`; });
-  return h;
+  const avail = offers.filter((o, i) => used[i] < TRADE_USES && (S.inv[o.give] || 0) >= o.gAmt).length;
+  return sec('trade', 'Kauppahuone', avail ? `${avail} vaihtoa mahdollista` : `uudet ${fmtTime((per + 1) * TRADE_PERIOD - S.time)}`, h);
 }
 function researchHTML() {
   if (S.level < 2) return '';
-  let h = `<h3>Insinöörikilta</h3><div class="rate">Pysyviä parannuksia koko tehtaalle. Jokainen taso maksaa edellistä enemmän.</div>`;
+  let h = `<div class="rate">Pysyviä parannuksia koko tehtaalle. Jokainen taso maksaa edellistä enemmän.</div>`;
   for (const r of RESEARCH) {
     if (r.finite && (!S.diff || S.diff === 'sandbox')) continue;
     const lv = resLv(r.id), c = resCost(r), mx = lv >= RES_MAX;
@@ -1497,7 +1506,8 @@ function researchHTML() {
     h += mx ? '<div class="rate">Täysin tutkittu.</div>' : `<div class="rescost">${Object.keys(c).map(k => `<span class="${(S.inv[k] || 0) < c[k] ? 'lack' : ''}">${icon(k)}${fmt(c[k])}</span>`).join(' ')}<button class="sbtn" data-a="research" data-v="${r.id}" ${canAfford(c) ? '' : 'disabled'}>Tutki</button></div>`;
     h += '</div>';
   }
-  return h;
+  const can = RESEARCH.filter(r => !(r.finite && (!S.diff || S.diff === 'sandbox')) && resLv(r.id) < RES_MAX && canAfford(resCost(r))).length;
+  return sec('res', 'Insinöörikilta', can ? `${can} tutkittavissa` : `tasoja ${RESEARCH.reduce((a, r) => a + resLv(r.id), 0)}`, h);
 }
 const mulOf = b => UP_SPEED[upl(b)] * (BUILD[b.t].mul || 1) * resMul('craft');
 const UP_SPEED = [1, 1, 1.5, 2.1], UP_STEAM = [1, 1, 1.35, 1.8];
@@ -1929,14 +1939,14 @@ const fameTitle = () => FAME_TITLES.filter(f => (S.fame || 0) >= f[0]).pop()[1];
 function expHTML() {
   if (!S.ships) return '';
   const free = S.ships - expAway();
-  let h = `<h3>Retkikunnat</h3><div class="rate">Maine ${S.fame || 0} · ${fameTitle()} · vapaita ilmalaivoja ${free} / ${S.ships}</div>`;
+  let h = `<div class="rate">Maine ${S.fame || 0} · ${fameTitle()} · vapaita ilmalaivoja ${free} / ${S.ships}</div>`;
   for (const x of S.exp || []) { const e = EXPED.find(q => q.id === x.id); if (e) h += `<div class="req"><span>&#9992;</span><span>${e.n}</span><span>${fmtTime(Math.max(0, x.end - S.time))}</span><div class="bar"><i style="width:${(1 - (x.end - S.time) / e.dur) * 100}%"></i></div></div>`; }
   for (const e of EXPED) {
     h += `<div class="resrow"><div class="resh"><b>${e.n}</b><span class="rate">${fmtTime(e.dur)} · maine +${e.fame}</span></div><div class="rate">${e.d}${e.ore && (!S.diff || S.diff === 'sandbox') ? ' (Sandboxissa malmit eivät lopu, joten löytöjä ei tarvita.)' : ''} Tuo: ${Object.keys(e.rew).map(k => `${e.rew[k]} ${ITEMS[k].n.toLowerCase()}`).join(', ')}.</div>`;
     h += `<div class="rescost">${Object.keys(e.cost).map(k => `<span class="${(S.inv[k] || 0) < e.cost[k] ? 'lack' : ''}">${icon(k)}${e.cost[k]}</span>`).join(' ')}<button class="sbtn" data-a="exp" data-v="${e.id}" ${free > 0 && canAfford(e.cost) ? '' : 'disabled'}>Lähetä</button></div></div>`;
   }
   if (S.lastFound) h += `<button class="sbtn" style="margin-top:6px" data-a="expGo">Näytä viimeisin löytö</button>`;
-  return h;
+  return sec('exp', 'Retkikunnat', `${(S.exp || []).length ? (S.exp || []).length + ' matkalla · ' : ''}vapaita ${free}`, h);
 }
 function contractDone() {
   const c = S.contract; for (const k in c.rew) give(k, c.rew[k]);
@@ -3969,8 +3979,9 @@ function renderGoal() {
   }
   const nsv = SURVEY.find(sv => sv.r > regionR());
   if (nsv && S.level >= 1) {
-    h += `<h3>Maanmittaus</h3><div class="rate">Laajenna rakennusaluetta ${regionR() * 2} → ${nsv.r * 2} ruutua. Hinta: ${Object.keys(nsv.cost).map(k => `<span class="${(S.inv[k] || 0) < nsv.cost[k] ? 'lack' : ''}">${nsv.cost[k]} ${ITEMS[k].n.toLowerCase()}</span>`).join(', ')}</div>`;
-    h += `<button class="sbtn" style="margin-top:6px" data-a="survey" ${canAfford(nsv.cost) ? '' : 'disabled'}>Kartoita lisää</button>`;
+    let sv = `<div class="rate">Laajenna rakennusaluetta ${regionR() * 2} → ${nsv.r * 2} ruutua. Hinta: ${Object.keys(nsv.cost).map(k => `<span class="${(S.inv[k] || 0) < nsv.cost[k] ? 'lack' : ''}">${nsv.cost[k]} ${ITEMS[k].n.toLowerCase()}</span>`).join(', ')}</div>`;
+    sv += `<button class="sbtn" style="margin-top:6px" data-a="survey" ${canAfford(nsv.cost) ? '' : 'disabled'}>Kartoita lisää</button>`;
+    h += sec('survey', 'Maanmittaus', canAfford(nsv.cost) ? 'voidaan kartoittaa' : `${regionR() * 2} → ${nsv.r * 2} ruutua`, sv);
   }
   h += tradeHTML();
   h += researchHTML();
@@ -4226,6 +4237,7 @@ function doAction(el) {
     case 'upg': if (b) upgrade(b); break;
     case 'delZep': if (b) removeZep(b); return;
     case 'survey': doSurvey(); return;
+    case 'secTog': { const id = el.dataset.v, a2 = PREF.secClosed = PREF.secClosed || [], i2 = a2.indexOf(id); if (i2 >= 0) a2.splice(i2, 1); else a2.push(id); savePrefs(); $('goalBody')._h = null; renderGoal(); return; }
     case 'trade': doTrade(+el.dataset.v); return;
     case 'research': buyResearch(el.dataset.v); return;
     case 'exp': sendExp(el.dataset.v); return;
