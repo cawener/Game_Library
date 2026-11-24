@@ -648,7 +648,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.50.23';
+const VERSION = '0.50.24';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -1454,6 +1454,38 @@ function buyResearch(id) {
   pay(c); (S.res = S.res || {})[id] = resLv(id) + 1; sfx('patent'); flashT = .35;
   toast(`Insinöörikilta: ${r.n} taso ${resLv(id)} (${r.fx} +${Math.round(resLv(id) * r.per * 100)} %)`);
   renderGoal(); renderInv(); save();
+}
+// ---- trading house: rotating barter offers (deliberately below production value)
+const TRADE_VAL = { rautalevy: [1, 0], kuparilevy: [1, 0], hiili: [.5, 0], kivi: [.4, 0], tiili: [1.2, 0], puu: [.5, 0], lankku: [1, 1], hammasratas: [2.2, 1], kuparikela: [.6, 1], putki: [1.2, 1],
+  sinkki: [1.5, 1], messinki: [2.5, 1], teras: [3.5, 2], venttiili: [8, 2], voiteluoljy: [3, 3], kellokoneisto: [25, 3], mantamoottori: [80, 4] };
+const TRADE_PERIOD = 300, TRADE_RATE = .6, TRADE_USES = 3;
+function tradeOffers() {
+  const per = Math.floor(S.time / TRADE_PERIOD), R = rng((S.seed || 1) * 31 + per * 977), pool = Object.keys(TRADE_VAL).filter(k => TRADE_VAL[k][1] <= S.level);
+  const offers = [];
+  for (let n = 0; n < 3 && pool.length > 1; n++) {
+    let get, give, tries = 0;
+    do { get = pool[(R() * pool.length) | 0]; give = pool[(R() * pool.length) | 0]; } while ((get === give || offers.some(o => o.get === get)) && ++tries < 30);
+    const ga = [5, 10, 20, 40][(R() * 4) | 0] * (TRADE_VAL[get][0] >= 20 ? .2 : 1), gAmt = Math.max(1, Math.round(ga));
+    const vAmt = Math.max(5, Math.ceil(gAmt * TRADE_VAL[get][0] / TRADE_VAL[give][0] / TRADE_RATE / 5) * 5);
+    offers.push({ give, gAmt: vAmt, get, getAmt: gAmt });
+  }
+  return { per, offers };
+}
+function doTrade(i) {
+  const { per, offers } = tradeOffers(), o = offers[i]; if (!o) return;
+  S.tradeUsed = S.tradeUsed && S.tradeUsed.per === per ? S.tradeUsed : { per, n: [0, 0, 0] };
+  if (S.tradeUsed.n[i] >= TRADE_USES) { toast('Tämä tarjous on käytetty loppuun'); return; }
+  if ((S.inv[o.give] || 0) < o.gAmt) { toast('Varastossa ei ole tarpeeksi'); sfx('error'); return; }
+  S.inv[o.give] -= o.gAmt; if (!S.inv[o.give]) delete S.inv[o.give]; give(o.get, o.getAmt); S.tradeUsed.n[i]++;
+  sfx('craft'); toast(`Vaihdettu ${o.gAmt} × ${lc(o.give)} → ${o.getAmt} × ${lc(o.get)}`); renderGoal(); renderInv();
+}
+function tradeHTML() {
+  if (S.level < 1) return '';
+  const { per, offers } = tradeOffers(), used = S.tradeUsed && S.tradeUsed.per === per ? S.tradeUsed.n : [0, 0, 0];
+  let h = `<h3>Kauppahuone</h3><div class="rate">Vaihda ylijäämää tarvitsemaasi. Uudet tarjoukset ${fmtTime((per + 1) * TRADE_PERIOD - S.time)} kuluttua.</div>`;
+  offers.forEach((o, i) => { const left = TRADE_USES - used[i];
+    h += `<div class="rescost trade"><span class="${(S.inv[o.give] || 0) < o.gAmt ? 'lack' : ''}">${icon(o.give)}${o.gAmt}</span><span>&#8594;</span><span>${icon(o.get)}${o.getAmt}</span><span class="rate">${left}/${TRADE_USES}</span><button class="sbtn" data-a="trade" data-v="${i}" ${left > 0 && (S.inv[o.give] || 0) >= o.gAmt ? '' : 'disabled'}>Vaihda</button></div>`; });
+  return h;
 }
 function researchHTML() {
   if (S.level < 2) return '';
@@ -3940,6 +3972,7 @@ function renderGoal() {
     h += `<h3>Maanmittaus</h3><div class="rate">Laajenna rakennusaluetta ${regionR() * 2} → ${nsv.r * 2} ruutua. Hinta: ${Object.keys(nsv.cost).map(k => `<span class="${(S.inv[k] || 0) < nsv.cost[k] ? 'lack' : ''}">${nsv.cost[k]} ${ITEMS[k].n.toLowerCase()}</span>`).join(', ')}</div>`;
     h += `<button class="sbtn" style="margin-top:6px" data-a="survey" ${canAfford(nsv.cost) ? '' : 'disabled'}>Kartoita lisää</button>`;
   }
+  h += tradeHTML();
   h += researchHTML();
   if (S.storm && S.storm.end > S.time) h += `<div class="hint" style="border-color:#5fa8c9;background:rgba(95,168,201,.1)"><b>Myrsky</b> · ${fmtTime(S.storm.end - S.time)}. Kattilat tuottavat 25 % vähemmän höyryä.</div>`;
   const hn = S.tut != null && S.tut < TUT.length ? null : hint() && fillKeys(hint()); if (hn) h += `<div class="hint">${hn}</div>`;
@@ -4193,6 +4226,7 @@ function doAction(el) {
     case 'upg': if (b) upgrade(b); break;
     case 'delZep': if (b) removeZep(b); return;
     case 'survey': doSurvey(); return;
+    case 'trade': doTrade(+el.dataset.v); return;
     case 'research': buyResearch(el.dataset.v); return;
     case 'exp': sendExp(el.dataset.v); return;
     case 'expGo': if (S.lastFound) { cam.x = S.lastFound.x + .5; cam.y = S.lastFound.y + .5; closeDrawers(); } return;
