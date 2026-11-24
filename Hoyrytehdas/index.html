@@ -500,7 +500,8 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
       <kbd>Alapalkki</kbd><span>Luokkarivin oikeassa reunassa ovat viimeksi käytetyt rakennukset muista luokista: napauta vaihtaaksesi suoraan. Ylärivin välilehdet vaihtavat luokkaa (Logistiikka, Tuotanto, Energia ja öljy, Liikenne, Telakka). Napauta korttia valitaksesi rakennuksen ja uudelleen poistaaksesi valinnan. Palkkia voi vierittää sivuttain</span>
       <kbd>Rakentaminen</kbd><span>1) <b>Valitse paikka</b>: napauta karttaa. 2) <b>Valitse suunta</b>: napauta haluttua nuolta haamun ympärillä. Haamu tai ✓ rakentaa korostettuun suuntaan, ↻ kääntää ja ✕ peruu. Vetäminen liikuttaa näkymää rakennustilassakin</span>
       <kbd>Kuljettimet ja putket</kbd><span>Kuljettimet, putket, öljyputket ja raiteet rakennetaan vetämällä sormella. Suunta seuraa vetoa</span>
-      <kbd>Pura</kbd><span>Valitse Pura-kortti ja napauta tai vedä rakennusten yli. Materiaalit palautuvat varastoon</span>
+      <kbd>Työkalut</kbd><span>Kaavat, Kopioi, Päivitä, Pura, Käännä, Kumoa ja Näkymä löytyvät alapalkin viimeiseltä välilehdeltä ⚙ Työkalut</span>
+      <kbd>Pura</kbd><span>Valitse Työkaluista Pura-kortti ja napauta tai vedä rakennusten yli. Materiaalit palautuvat varastoon</span>
       <kbd>Kopioi asetukset</kbd><span>Rakennuksen tiedoissa: Kopioi asetukset (resepti, suodatin, tila) ja avaa sitten samanlainen rakennus ja paina Liitä asetukset</span>
       <kbd>Pysäytä kone</kbd><span>Avaa kone ja paina Pysäytä. Kone ei silloin kuluta höyryä eikä raaka-aineita, ja sen päällä näkyy taukomerkki</span>
       <kbd>Pura alue</kbd><span>Pura-työkalun ohjeruudussa voit valita Viiva (sormen reitti) tai Alue (vedä suorakulmio, kaikki sen sisällä puretaan)</span>
@@ -647,7 +648,7 @@ button:focus-visible { outline: 2px solid var(--brass-light); outline-offset: 2p
 /* =========================================================
    DATA
    ========================================================= */
-const VERSION = '0.50.22';
+const VERSION = '0.50.23';
 const W = 128, H = 128, GAP = 0.3, STEP = 1 / 30;
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const SAVE_KEY = 'hoyrytehdas-save-v1';
@@ -3726,6 +3727,7 @@ const CATS = [
 CATS.forEach((c, i) => { c.key = CAT_KEYS[i]; });
 let curCat = 'log';
 const visTools = c => c.tools.filter(unlocked);
+const ACT_TOOLS = { copy: 'Kopioi', paste: 'Liitä', upgrade: 'Päivitä', remove: 'Pura' };
 // keyboard hint for a building, e.g. "C → 2" (category key, card number)
 function kh(t) {
   const c = CATS.find(c => c.tools.includes(t)); if (!c || !unlocked(t)) return '';
@@ -3735,16 +3737,19 @@ const fillKeys = str => str.replace(/\{k:(\w+)\}/g, (_, t) => { const k = kh(t);
 function renderTools() {
   let h = '<div class="tabs" role="tablist">';
   for (const c of CATS) if (c.tools.some(unlocked)) h += `<button role="tab" class="${c.id === curCat ? 'on' : ''}" data-a="cat" data-v="${c.id}"><span class="tk">${c.key}</span>${c.n}</button>`;
+  h += `<button role="tab" class="${curCat === 'tools' ? 'on' : ''}" data-a="cat" data-v="tools"><span class="tk">&#9881;</span>Työkalut</button>`;
+  if (ACT_TOOLS[tool] && curCat !== 'tools') h += `<span class="curTool"><button class="ctGo" data-a="cat" data-v="tools" title="Näytä työkalut">${ACT_TOOLS[tool]}</button><button class="ctX" data-a="toolClear" aria-label="Poista valinta">&#10005;</button></span>`;
   { const tc = tool && BUILD[tool] ? CATS.find(c => c.tools.includes(tool)) : null;
     if (tc && tc.id !== curCat) h += `<span class="curTool"><button class="ctGo" data-a="cat" data-v="${tc.id}" title="Näytä valitun työkalun luokka"><img src="${TURL[tool]}" alt="">${BUILD[tool].n}</button><button class="ctX" data-a="toolClear" aria-label="Poista valinta">&#10005;</button></span>`; }
   h += '</div><div class="row">';
   const cat = CATS.find(c => c.id === curCat) || CATS[0];
-  { const rec = (PREF.recent || []).filter(k => k !== tool && BUILD[k] && unlocked(k) && TURL[k] && !cat.tools.includes(k)).slice(0, 4);
+  if (curCat !== 'tools') { const rec = (PREF.recent || []).filter(k => k !== tool && BUILD[k] && unlocked(k) && TURL[k] && !cat.tools.includes(k)).slice(0, 4);
     if (rec.length) h += `<span class="recent" aria-label="Viimeksi käytetyt">${rec.map(k => `<button data-tool="${k}" title="${BUILD[k].n} (viimeksi käytetty)" aria-label="${BUILD[k].n}"><img src="${TURL[k]}" alt=""></button>`).join('')}</span><span class="sep"></span>`; }
+  if (curCat !== 'tools') {
   visTools(cat).forEach((k, i) => {
     h += `<button class="tool${tool === k ? ' on' : ''}${affordable(BUILD[k].cost) ? '' : ' poor'}" data-tool="${k}" aria-label="${BUILD[k].n}"><span class="k">${i === 9 ? 0 : i + 1}</span><img src="${TURL[k]}" alt=""><span class="nm">${BUILD[k].n}</span></button>`;
   });
-  h += '<span class="sep"></span>';
+  } else {
   h += `<button class="tool" data-a="bp" aria-label="Kaavakirjasto"><span class="k">L</span><img src="${TURL.paste}" alt=""><span class="nm">Kaavat</span></button>`;
   h += `<button class="tool${tool === 'copy' ? ' on' : ''}" data-tool="copy" aria-label="Kopioi alue"><span class="k l">Ctrl+C</span><img src="${TURL.copy}" alt=""><span class="nm">Kopioi</span></button>`;
   if (S.clip) h += `<button class="tool${tool === 'paste' ? ' on' : ''}" data-tool="paste" aria-label="Liitä kaava"><span class="k l">Ctrl+V</span><img src="${TURL.paste}" alt=""><span class="nm">Liitä</span></button>`;
@@ -3753,7 +3758,10 @@ function renderTools() {
   h += `<button class="tool" data-a="rotTool" aria-label="Käännä"><span class="k">R</span><span class="big-ch">&#x21bb;</span><span class="nm">Käännä</span></button>`;
   h += `<button class="tool" data-a="undoBtn" aria-label="Kumoa"><span class="k l">Ctrl+Z</span><span class="big-ch">&#x21b6;</span><span class="nm">Kumoa</span></button>`;
   h += `<button class="tool${overlay ? ' on' : ''}" data-a="ovlBtn" aria-label="Tilanäkymä"><span class="k">T</span><span class="big-ch">&#x25d0;</span><span class="nm">${['Näkymä', 'Tila', 'Höyry', 'Malmit'][overlay]}</span></button>`;
+  }
   setHTML($('tools'), h + '</div>'); renderToolsTog();
+  if (renderTools.lastCat !== curCat) { renderTools.lastCat = curCat; const tb = $('tools').querySelector('.tabs'), on = tb && tb.querySelector('.on');
+    if (on && tb.scrollWidth > tb.clientWidth) tb.scrollLeft = Math.max(0, on.offsetLeft - tb.offsetLeft - (tb.clientWidth - on.offsetWidth) / 2); }
 }
 function costHTML(cost) {
   return '<div class="cost">' + Object.keys(cost).map(k => `<span class="${(S.inv[k] || 0) < cost[k] ? 'lack' : ''}">${icon(k)}${cost[k]} ${ITEMS[k].n}</span>`).join('') + '</div>';
@@ -3789,6 +3797,7 @@ function selectTool(k) {
   if (k && BUILD[k] && !unlocked(k)) return;
   if (k === 'paste' && !S.clip) return;
   tool = tool === k ? null : k; tp = null;
+  if (ACT_TOOLS[tool]) curCat = 'tools';
   if (tool && BUILD[tool]) { const c = CATS.find(c => c.tools.includes(tool)); if (c) curCat = c.id; // jump to the tool's tab only when it is picked
     PREF.recent = [tool, ...(PREF.recent || []).filter(x => x !== tool)].slice(0, 8); savePrefs(); }
   cv.style.cursor = tool ? 'crosshair' : 'default';
@@ -4813,7 +4822,7 @@ window.addEventListener('keydown', e => {
     const c = CATS.find(c => c.key.toLowerCase() === k);
     if (visTools(c).length) { curCat = c.id; renderTools(); } // browsing another tab keeps the current tool
   }
-  else if (/^[0-9]$/.test(k) && !e.ctrlKey && !e.metaKey) {
+  else if (/^[0-9]$/.test(k) && !e.ctrlKey && !e.metaKey && curCat !== 'tools') {
     const c = CATS.find(c => c.id === curCat) || CATS[0], list = visTools(c), n = k === '0' ? 9 : +k - 1;
     if (list[n]) selectTool(list[n]);
   }
